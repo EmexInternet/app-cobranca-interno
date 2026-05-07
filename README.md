@@ -23,14 +23,16 @@ app-cobranca-interno/
         `-- .gitkeep
 ```
 
-## Fase 1 - Automacoes internas na VPS
+## Backend - Automacoes internas na VPS
 
 Objetivo:
 
 - consumir a API de cancelamentos
 - filtrar somente clientes com `motivo_cancelamento = CANCELAMENTO AUTOMATICO INADIMPLENCIA`
-- consultar atendimentos pendentes de cobranca no Hubsoft
-- relatar e fechar os atendimentos encontrados
+- executar a fase 1 operacional:
+  consultar atendimentos pendentes de cobranca no Hubsoft, relatar, fechar e registrar observacao obrigatoria
+- executar a fase 2 operacional logo apos a fase 1, por cliente:
+  consultar atendimento de cancelamento por inadimplencia, buscar faturas, calcular multa e descontos, relatar negociacao e tentar fechar o atendimento
 - acessar o Hubsoft Web via Chrome para registrar a observacao obrigatoria no cadastro do cliente
 - manter persistencia de login para evitar autenticacao manual a cada execucao
 
@@ -53,9 +55,9 @@ Objetivo:
 ## Regras de documentacao
 
 - o `README.md` raiz registra o panorama do projeto
-- a pasta `app-cobranca-backend` concentra a documentacao e a base tecnica da fase 1
+- a pasta `app-cobranca-backend` concentra a documentacao e a base tecnica das fases operacionais internas
 - conforme avancarmos, a documentacao deve ser atualizada antes ou junto das implementacoes
 
 ## Status atual
 
-Fase 1 estruturada em nivel de arquitetura e preparacao inicial do backend.
+Backend com fase 1 funcional e fase 2 em implementacao inicial no mesmo fluxo por cliente.

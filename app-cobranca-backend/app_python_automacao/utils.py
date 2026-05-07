@@ -2,9 +2,19 @@ from __future__ import annotations
 
 import unicodedata
 from datetime import date
+from decimal import Decimal, ROUND_HALF_UP
 from typing import Any
 
-from app_python_automacao.models import CancelamentoRecord, HubsoftAtendimento
+from app_python_automacao.models import (
+    CancelamentoNegotiationSummary,
+    CancelamentoRecord,
+    HubsoftAtendimento,
+    HubsoftFatura,
+    MultaRescisoriaResult,
+)
+
+
+TWOPLACES = Decimal("0.01")
 
 
 def normalize_text(value: str | None) -> str:
@@ -37,6 +47,46 @@ def filter_atendimentos_cobranca(
 ) -> list[HubsoftAtendimento]:
     target = normalize_text(tipo_alvo)
     return [item for item in atendimentos if normalize_text(item.tipo_atendimento) == target]
+
+
+def filter_faturas_by_detalhamento(
+    faturas: list[HubsoftFatura],
+    descricoes_ignoradas: list[str],
+) -> list[HubsoftFatura]:
+    ignored = {normalize_text(item) for item in descricoes_ignoradas}
+    if not ignored:
+        return faturas
+
+    filtered: list[HubsoftFatura] = []
+    for fatura in faturas:
+        descricoes = {normalize_text(item) for item in fatura.detalhamento_descricoes}
+        if descricoes.intersection(ignored):
+            continue
+        filtered.append(fatura)
+    return filtered
+
+
+def build_negotiation_summary(
+    faturas: list[HubsoftFatura],
+    multa: MultaRescisoriaResult,
+) -> CancelamentoNegotiationSummary:
+    divida_sem_multa = sum((item.valor for item in faturas), Decimal("0")).quantize(
+        TWOPLACES,
+        rounding=ROUND_HALF_UP,
+    )
+    valor_multa = multa.valor_multa.quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    total_divida = (divida_sem_multa + valor_multa).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    divida_sem_multa_50 = (divida_sem_multa * Decimal("0.5")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    divida_40 = (total_divida * Decimal("0.6")).quantize(TWOPLACES, rounding=ROUND_HALF_UP)
+    return CancelamentoNegotiationSummary(
+        valor_multa=valor_multa,
+        total_divida=total_divida,
+        divida_sem_multa=divida_sem_multa,
+        divida_sem_multa_50=divida_sem_multa_50,
+        divida_40=divida_40,
+        mensagem_calculo_multa=multa.mensagem_calculo,
+        quantidade_faturas_consideradas=len(faturas),
+    )
 
 
 def extract_items(payload: Any) -> list[dict[str, Any]]:

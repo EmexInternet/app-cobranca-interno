@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import httpx
 
-from app_python_automacao.models import HubsoftAtendimento
+from app_python_automacao.models import HubsoftAtendimento, HubsoftFatura
 from app_python_automacao.settings import Settings
 from app_python_automacao.utils import extract_items, filter_atendimentos_cobranca
 
@@ -49,6 +49,12 @@ class HubsoftApiClient:
         return self._token
 
     def get_pending_cobranca(self, id_cliente_servico: int) -> list[HubsoftAtendimento]:
+        return self.get_pending_atendimentos(id_cliente_servico, self.settings.tipo_atendimento_alvo)
+
+    def get_pending_cancelamento_inadimplencia(self, id_cliente_servico: int) -> list[HubsoftAtendimento]:
+        return self.get_pending_atendimentos(id_cliente_servico, self.settings.tipo_atendimento_cancelamento_alvo)
+
+    def get_pending_atendimentos(self, id_cliente_servico: int, tipo_alvo: str) -> list[HubsoftAtendimento]:
         token = self._require_token()
         url = (
             f"{self.settings.hubsoft_api_base_url}/api/v1/integracao/cliente/atendimento"
@@ -65,13 +71,39 @@ class HubsoftApiClient:
 
         items = extract_items(payload)
         atendimentos = [HubsoftAtendimento.from_dict(item) for item in items]
-        cobranca = filter_atendimentos_cobranca(atendimentos, self.settings.tipo_atendimento_alvo)
+        cobranca = filter_atendimentos_cobranca(atendimentos, tipo_alvo)
         LOGGER.info(
-            "Cliente_servico %s retornou %s atendimentos de cobranca pendentes.",
+            "Cliente_servico %s retornou %s atendimentos pendentes do tipo %s.",
             id_cliente_servico,
             len(cobranca),
+            tipo_alvo,
         )
         return cobranca
+
+    def get_pending_faturas(self, id_cliente_servico: int) -> list[HubsoftFatura]:
+        token = self._require_token()
+        url = (
+            f"{self.settings.hubsoft_api_base_url}/api/v1/integracao/cliente/financeiro"
+            "?busca=id_cliente_servico"
+            f"&termo_busca={id_cliente_servico}"
+            "&limit=50"
+            "&apenas_pendente=sim"
+        )
+
+        LOGGER.info("Consultando faturas pendentes do cliente_servico %s.", id_cliente_servico)
+        with httpx.Client(timeout=self.timeout) as client:
+            response = client.get(url, headers=self._auth_headers(token))
+            response.raise_for_status()
+            payload = response.json()
+
+        items = extract_items(payload)
+        faturas = [HubsoftFatura.from_dict(item) for item in items]
+        LOGGER.info(
+            "Cliente_servico %s retornou %s faturas pendentes.",
+            id_cliente_servico,
+            len(faturas),
+        )
+        return faturas
 
     def add_message(self, id_atendimento: int, mensagem: str) -> None:
         token = self._require_token()

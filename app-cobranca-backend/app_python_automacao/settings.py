@@ -39,6 +39,9 @@ class Settings:
     id_motivo_fechamento_atendimento: int
     descricao_fechamento_atendimento: str
     status_fechamento_atendimento: str
+    tipo_atendimento_cancelamento_alvo: str
+    financeiro_descricoes_ignoradas: list[str]
+    multa_rescisoria_valor_beneficio_padrao: str
     teste_codigo_cliente: int
     teste_id_cliente: int
 
@@ -87,6 +90,17 @@ class Settings:
                 "CONTRATO CANCELADO POR INADIMPLENCIA",
             ),
             status_fechamento_atendimento=os.getenv("STATUS_FECHAMENTO_ATENDIMENTO", "concluido"),
+            tipo_atendimento_cancelamento_alvo=os.getenv(
+                "TIPO_ATENDIMENTO_CANCELAMENTO_ALVO",
+                "CANCELAMENTO INADIMPLENCIA",
+            ),
+            financeiro_descricoes_ignoradas=_split_csv_env(
+                os.getenv(
+                    "FINANCEIRO_DESCRICOES_IGNORADAS",
+                    "MULTA RESCISORIA,EQUIPAMENTO EM COMODATO",
+                )
+            ),
+            multa_rescisoria_valor_beneficio_padrao=os.getenv("MULTA_RESCISORIA_VALOR_BENEFICIO_PADRAO", "600.00"),
             teste_codigo_cliente=int(os.getenv("TESTE_CODIGO_CLIENTE", "45098")),
             teste_id_cliente=int(os.getenv("TESTE_ID_CLIENTE", "44847")),
         )
@@ -114,3 +128,7 @@ class Settings:
         if missing:
             missing_fields = ", ".join(missing)
             raise RuntimeError(f"Variaveis obrigatorias nao preenchidas: {missing_fields}")
+
+
+def _split_csv_env(value: str) -> list[str]:
+    return [item.strip() for item in value.split(",") if item.strip()]

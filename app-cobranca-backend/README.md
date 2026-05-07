@@ -1,17 +1,15 @@
 # App Cobranca Backend
 
-Base da fase 1 do projeto, responsavel pelas automacoes internas executadas em VPS Linux.
+Base das automacoes internas executadas em VPS Linux.
 
-## Objetivo da fase 1
+## Objetivo atual
 
-Executar um fluxo operacional que:
+Executar um fluxo operacional em 2 fases, por cliente:
 
-1. busca cancelamentos em uma API externa
-2. filtra somente cancelamentos por inadimplencia
-3. consulta atendimentos pendentes de cobranca no Hubsoft
-4. adiciona relato padrao no atendimento
-5. fecha o atendimento com o motivo configurado
-6. acessa o Hubsoft Web para registrar a observacao obrigatoria no cadastro do cliente
+1. fase 1:
+   busca cancelamentos em uma API externa, localiza o atendimento de cobranca, relata, fecha e registra a observacao obrigatoria no Hubsoft Web
+2. fase 2:
+   localiza o atendimento de cancelamento por inadimplencia, consulta as faturas pendentes, calcula multa e descontos, relata a negociacao e tenta fechar o atendimento
 
 ## Regras principais do processo
 
@@ -150,6 +148,116 @@ Payload:
 }
 ```
 
+### 2.1 Fase 2: atendimento de cancelamento por inadimplencia
+
+Fluxo:
+
+1. consultar atendimentos pendentes do `id_cliente_servico`
+2. filtrar apenas `tipo_atendimento = CANCELAMENTO INADIMPLENCIA`
+3. consultar faturas pendentes do mesmo `id_cliente_servico`
+4. ignorar faturas com detalhamento `MULTA RESCISORIA` ou `EQUIPAMENTO EM COMODATO`
+5. calcular multa rescisoria e resumos financeiros
+6. relatar a negociacao no atendimento de cancelamento
+7. tentar fechar o atendimento
+8. se o fechamento falhar por retorno/O.S. em aberto, registrar o relato alternativo e deixar para finalizacao futura
+
+#### Consulta de atendimento de cancelamento
+
+Endpoint:
+
+```txt
+GET /api/v1/integracao/cliente/atendimento?busca=id_cliente_servico&termo_busca={id_cliente_servico}&apenas_pendente=sim
+```
+
+Campos de interesse:
+
+- `id_atendimento`
+- `protocolo`
+- `tipo_atendimento`
+
+Filtro obrigatorio:
+
+- considerar apenas itens com `tipo_atendimento = CANCELAMENTO INADIMPLENCIA`
+- quando houver mais de um atendimento de cancelamento pendente para o mesmo `id_cliente_servico`, utilizar somente o primeiro retorno da API
+
+#### Consulta de faturas pendentes
+
+Endpoint:
+
+```txt
+GET /api/v1/integracao/cliente/financeiro?busca=id_cliente_servico&termo_busca={id_cliente_servico}&limit=50&apenas_pendente=sim
+```
+
+Campos armazenados por fatura:
+
+- `id_fatura`
+- `status`
+- `valor`
+
+Regras:
+
+- ignorar faturas com `detalhamento.descricao = MULTA RESCISORIA`
+- ignorar faturas com `detalhamento.descricao = EQUIPAMENTO EM COMODATO`
+
+#### Calculo da multa rescisoria
+
+O backend agora espelha internamente a regra do arquivo [multa-recisoria.js](C:/Users/PROVISORIO/Desktop/JG%20PORTO/PROJETOS%20GITHUB/app-cobranca-interno/multa-recisoria.js), usando:
+
+- `data_venda`
+- `data_cancelamento`
+- `MULTA_RESCISORIA_VALOR_BENEFICIO_PADRAO` no `.env`
+
+Observacao importante:
+
+- o arquivo JavaScript original usa um `valor` de beneficio alem das duas datas
+- como essa origem ainda nao foi detalhada na integracao nova, a fase 2 usa temporariamente o valor configurado em `MULTA_RESCISORIA_VALOR_BENEFICIO_PADRAO`
+- por padrao, esse valor esta configurado como `600,00`
+- assim que a fonte oficial desse valor for confirmada, o ideal e substituir essa configuracao por dado real da operacao
+
+Variaveis calculadas:
+
+- `ValorMulta = multa rescisoria calculada`
+- `DividaSemMulta = soma das faturas validas`
+- `TotalDivida = DividaSemMulta + ValorMulta`
+- `DividaSemMulta50% = DividaSemMulta com 50% de desconto`
+- `Divida40% = TotalDivida com 40% de desconto`
+
+#### Relato do atendimento de cancelamento
+
+Mensagem enviada pelo backend:
+
+```txt
+> CONTRATO CANCELADO POR INADIMPLENCIA.
+> E-MAIL E WHATSAPP ENVIADOS.
+
+VALOR TOTAL DA DIVIDA: R$ {TotalDivida}
+
+CASO O(A) CLIENTE ENTRE EM CONTATO, FAVOR INFORMAR SOBRE A PENDENCIA FINANCEIRA EM ABERTO E NEGOCIACOES DISPONIVEIS:
+
+OPCAO 1 - SE O(A) CLIENTE DESEJAR RETORNAR COM O SERVICO:
+
+FICARA ISENTO DA MULTA RESCISORIA E O VALOR DO DEBITO PASSA A SER R$ {DividaSemMulta}.
+SERA CONCEDIDO 50% DE DESCONTO E O VALOR PARA PAGAMENTO FICA EM R$ {DividaSemMulta50%} + TAXA DE ATIVACAO (SUJEITO A AVALIACAO).
+A NEGOCIACAO PODERA SER PAGA POR BOLETO OU NA LOJA COM VENCIMENTO PARA 3 DIAS A FRENTE.
+DEIXAR O(A) CLIENTE CIENTE QUE A INSTALACAO SO OCORRERA APOS O PAGAMENTOS DOS DEBITOS E ENTREGA DOS EQUIPAMENTOS EM COMODATO (CASO NAO TENHAM SIDO REMOVIDOS).
+
+OPCAO 2 - SE O(A) CLIENTE DESEJAR SOMENTE LIQUIDAR O DEBITO:
+
+SERA CONCEDIDO 40% DE DESCONTO E O VALOR TOTAL PARA PAGAMENTO FICA EM R$ {Divida40%}.
+A NEGOCIACAO PODERA SER PAGA POR BOLETO OU NA LOJA COM VENCIMENTO PARA 3 DIAS A FRENTE.
+DEIXAR O(A) CLIENTE CIENTE SOBRE A DEVOLUCAO DOS EQUIPAMENTOS EM COMODATO (CASO NAO TENHAM SIDO REMOVIDOS).
+
+> SE O(A) CLIENTE ALEGAR PERDA/DANO, VERIFICAR COM O SETOR DE FATURAMENTO UMA NOVA NEGOCIACAO.
+```
+
+#### Fallback quando nao for possivel fechar o atendimento
+
+Se o fechamento falhar, o backend relata:
+
+```txt
+ATENDIMENTO NAO PODE SER FINALIZADO DEVIDO O.S EM ABERTO - SERA FINALIZADO EM MASSA QUANDO NOVO PROCESSO DO FLUXO DE RETIRADA FOR RODADO
+```
+
 ### 3. Automacao Web no Hubsoft
 
 Site:
@@ -241,6 +349,9 @@ Ja existe uma primeira base funcional com:
 
 - cliente HTTP para API de cancelamentos
 - cliente HTTP para autenticacao e operacoes da API Hubsoft
+- consulta de financeiro pendente para a fase 2
+- calculo interno da multa rescisoria espelhando a regra do `multa-recisoria.js`
+- resumo financeiro com desconto de 50% sem multa e 40% sobre a divida total
 - filtro normalizado para comparar textos com e sem acento
 - automacao Web via Selenium com perfil persistente de Chrome
 - CLI com subcomandos para fluxo completo, fluxo direto por cliente_servico e observacao isolada
@@ -264,6 +375,12 @@ google-chrome --version
 Se o Chrome nao estiver no `PATH`, preencher `HUBSOFT_CHROME_BINARY_PATH` no `.env`.
 
 4. Copiar `.env.example` para `.env` e preencher os valores reais na VPS.
+
+Variaveis novas da fase 2:
+
+- `TIPO_ATENDIMENTO_CANCELAMENTO_ALVO`
+- `FINANCEIRO_DESCRICOES_IGNORADAS`
+- `MULTA_RESCISORIA_VALOR_BENEFICIO_PADRAO`
 
 ## Como executar
 
@@ -311,3 +428,4 @@ python -m unittest discover -s tests
 2. confirmar o formato exato de retorno da API de cancelamentos e de atendimentos
 3. adicionar retentativas, timeout por etapa e relatorio de execucao em JSON
 4. preparar agendamento em VPS via `cron`
+5. confirmar a fonte oficial do valor-base usado no calculo da multa rescisoria
