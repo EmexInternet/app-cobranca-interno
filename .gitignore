@@ -1,0 +1,9 @@
+.venv/
+__pycache__/
+*.pyc
+
+app-cobranca-backend/.env
+app-cobranca-backend/logs/*
+!app-cobranca-backend/logs/.gitkeep
+app-cobranca-backend/storage/*
+!app-cobranca-backend/storage/.gitkeep

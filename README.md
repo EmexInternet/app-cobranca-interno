@@ -1,84 +1,61 @@
 # App Cobranca Interno
 
-Projeto interno para tratativa de multa rescisória, automações operacionais de cobrança e apoio ao time no fluxo de cancelamento por inadimplência.
+Projeto interno dividido em 2 fases:
 
-## Contexto
+1. `app-cobranca-backend`: automacoes internas executadas em uma VPS Linux.
+2. `site`: interface operacional que sera hospedada na Hostinger em uma etapa posterior.
 
-O projeto foi definido a partir de uma reunião com a Angélica, onde foram identificados pontos de atenção no processo de cobrança.
-
-O objetivo é estruturar um fluxo com integrações ao Hubsoft, automações em Python e uma interface interna para apoio operacional.
-
-## Escopo
-
-Este projeto está dividido em 3 fases.
-
-### Fase 1 - Fechamento em massa de atendimentos
-
-Automação de finalização em massa para atendimentos de cobrança quando o cliente for cancelado.
-
-Tecnologias previstas:
-
-- `FastAPI`
-- API de relato do Hubsoft
-- API de atendimentos do Hubsoft
-
-Fluxo previsto:
-
-1. Consultar cancelamentos no Hubsoft.
-2. Identificar os atendimentos de cobrança vinculados ao cliente.
-3. Finalizar os atendimentos em massa.
-4. Registrar o relato padrão de encerramento.
-
-Relato padrao:
+## Estrutura atual
 
 ```txt
-TENTATIVAS DE CONTATO PARA NEGOCIAÇÃO SEM SUCESSO.
-CONTRATO CANCELADO POR INADIMPLÊNCIA.
+app-cobranca-interno/
+|-- .gitignore
+|-- README.md
+`-- app-cobranca-backend/
+    |-- README.md
+    |-- .env.example
+    |-- requirements.txt
+    |-- docs/
+    |   `-- fase1-arquitetura.md
+    |-- logs/
+    |   `-- .gitkeep
+    `-- storage/
+        `-- .gitkeep
 ```
 
-### Fase 2 - Observação obrigatória no Hubsoft
+## Fase 1 - Automacoes internas na VPS
 
-Automação para acessar o Hubsoft Web e adicionar a observação obrigatória, já que esse processo não possui recurso nativo no sistema.
+Objetivo:
 
-Abordagem prevista:
+- consumir a API de cancelamentos
+- filtrar somente clientes com `motivo_cancelamento = CANCELAMENTO AUTOMATICO INADIMPLENCIA`
+- consultar atendimentos pendentes de cobranca no Hubsoft
+- relatar e fechar os atendimentos encontrados
+- acessar o Hubsoft Web via Chromium para registrar a observacao obrigatoria no cadastro do cliente
+- manter persistencia de login para evitar autenticacao manual a cada execucao
 
-1. Localizar o protocolo correto.
-2. Acessar o Hubsoft via automacao em Python.
-3. Inserir a observação obrigatória no cadastro ou atendimento correspondente.
+Detalhamento tecnico:
 
-Observacao padrao:
+- pasta: [app-cobranca-backend](C:/Users/PROVISORIO/Desktop/JG%20PORTO/PROJETOS%20GITHUB/app-cobranca-interno/app-cobranca-backend)
+- documentacao principal: [app-cobranca-backend/README.md](C:/Users/PROVISORIO/Desktop/JG%20PORTO/PROJETOS%20GITHUB/app-cobranca-interno/app-cobranca-backend/README.md)
+- arquitetura e fluxo: [app-cobranca-backend/docs/fase1-arquitetura.md](C:/Users/PROVISORIO/Desktop/JG%20PORTO/PROJETOS%20GITHUB/app-cobranca-interno/app-cobranca-backend/docs/fase1-arquitetura.md)
 
-```txt
-CLIENTE POSSUI PENDÊNCIA FINANCEIRA NO PROTOCOLO XXXXXXXXXXX.
-```
+## Fase 2 - Site hospedado na Hostinger
 
-### Fase 3 - Site interno de cobrança
+Esta fase ficara separada da automacao interna.
 
-Criação do site `app-cobranca-interno` para centralizar o fluxo operacional.
+Objetivo:
 
-Fluxo previsto:
+- oferecer uma interface web para acompanhamento e apoio operacional
+- centralizar resultados, filtros, historico e acoes manuais
+- consumir os dados produzidos pela fase 1
 
-1. Puxar informações do Hubsoft.
-2. Realizar cálculos internos.
-3. Gerar texto de relato.
-4. Exibir campo visual para envio do relato.
-5. Permitir disparos de email e SMS.
+## Regras de documentacao
 
-## Entregas previstas
-
-- Automação de fechamento de atendimentos de cobrança
-- Automação de inclusão de observação obrigatória no Hubsoft
-- Interface interna para operação de cobrança
-
-## Pontos de atenção
-
-- O fluxo depende de integrações com APIs do Hubsoft.
-- Parte da operação exigirá automação web em Python.
-- Os relatos e observações devem seguir o padrão operacional definido.
-- O site interno será usado como apoio à execução manual e semiautomática do processo.
+- o `README.md` raiz registra o panorama do projeto
+- a pasta `app-cobranca-backend` concentra a documentacao e a base tecnica da fase 1
+- conforme avancarmos, a documentacao deve ser atualizada antes ou junto das implementacoes
 
 ## Status atual
 
-Repositório em fase inicial.
-
-Neste primeiro momento, a entrega prevista é somente a documentação inicial do projeto via `README.md`.
+Fase 1 estruturada em nivel de arquitetura e preparacao inicial do backend.
