@@ -35,7 +35,6 @@ class Settings:
     timezone: str
     motivo_cancelamento_alvo: str
     tipo_atendimento_alvo: str
-    relato_encerramento: str
     id_motivo_fechamento_atendimento: int
     descricao_fechamento_atendimento: str
     status_fechamento_atendimento: str
@@ -79,11 +78,6 @@ class Settings:
                 "CANCELAMENTO AUTOMATICO INADIMPLENCIA",
             ),
             tipo_atendimento_alvo=os.getenv("TIPO_ATENDIMENTO_ALVO", "COBRANCA"),
-            relato_encerramento=os.getenv(
-                "RELATO_ENCERRAMENTO",
-                "TENTATIVAS DE CONTATO PARA NEGOCIACAO SEM SUCESSO.\n\n"
-                "> CONTRATO CANCELADO POR INADIMPLENCIA.\n",
-            ),
             id_motivo_fechamento_atendimento=int(os.getenv("ID_MOTIVO_FECHAMENTO_ATENDIMENTO", "17")),
             descricao_fechamento_atendimento=os.getenv(
                 "DESCRICAO_FECHAMENTO_ATENDIMENTO",

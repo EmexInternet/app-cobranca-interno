@@ -11,6 +11,25 @@ Executar um fluxo operacional em 2 fases, por cliente:
 2. fase 2:
    localiza o atendimento de cancelamento por inadimplencia, consulta as faturas pendentes, calcula multa e descontos, relata a negociacao e tenta fechar o atendimento
 
+## Status atual do que ja foi realizado
+
+Hoje o backend ja executa, por cliente:
+
+1. leitura da API de cancelamentos com filtro por motivo de cancelamento
+2. consulta do atendimento de cobranca no Hubsoft
+3. uso de apenas 1 atendimento de cobranca por `id_cliente_servico`
+4. observacao obrigatoria no Hubsoft Web via Selenium com sessao persistente
+5. consulta do atendimento de cancelamento por inadimplencia
+6. consulta das faturas pendentes
+7. exclusao das faturas com `MULTA RESCISORIA` e `EQUIPAMENTO EM COMODATO`
+8. calculo interno de multa rescisoria, divida total e descontos
+9. montagem da mensagem financeira da fase 2 para o atendimento de cancelamento
+10. fallback de relato quando o atendimento de cancelamento nao puder ser fechado
+
+Item registrado para implementacao ao final do processo individual por cliente:
+
+- disparo de e-mail e WhatsApp via API, apos a conclusao das fases 1 e 2
+
 ## Regras principais do processo
 
 ### 1. Origem dos dados de cancelamento
@@ -113,6 +132,10 @@ Filtro obrigatorio:
 
 #### Relato padrao
 
+Observacao:
+
+- este texto agora fica fixo no codigo da fase 1 e nao depende mais de variavel no `.env`
+
 Endpoint:
 
 ```txt
@@ -160,6 +183,7 @@ Fluxo:
 6. relatar a negociacao no atendimento de cancelamento
 7. tentar fechar o atendimento
 8. se o fechamento falhar por retorno/O.S. em aberto, registrar o relato alternativo e deixar para finalizacao futura
+9. etapa futura: disparar e-mail e WhatsApp via API ao final do processo individual do cliente
 
 #### Consulta de atendimento de cancelamento
 
@@ -319,6 +343,11 @@ Fluxo esperado:
 CLIENTE POSSUI PENDENCIA FINANCEIRA NO PROTOCOLO {protocolo}
 ```
 
+Regra atual:
+
+- o `{protocolo}` usado nessa observacao deve ser o do atendimento de `CANCELAMENTO INADIMPLENCIA`
+- se esse atendimento ainda nao existir para o cliente, o sistema usa temporariamente o protocolo do atendimento de cobranca e registra aviso em log
+
 6. ativar o toggle para mudar de `Visualizacao obrigatoria? Nao` para `Visualizacao obrigatoria? Sim`
 7. clicar em `Salvar`
 
@@ -429,3 +458,4 @@ python -m unittest discover -s tests
 3. adicionar retentativas, timeout por etapa e relatorio de execucao em JSON
 4. preparar agendamento em VPS via `cron`
 5. confirmar a fonte oficial do valor-base usado no calculo da multa rescisoria
+6. implementar o disparo de e-mail e WhatsApp via API no encerramento do fluxo individual por cliente

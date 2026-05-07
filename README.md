@@ -61,3 +61,7 @@ Objetivo:
 ## Status atual
 
 Backend com fase 1 funcional e fase 2 em implementacao inicial no mesmo fluxo por cliente.
+
+Registro de roadmap:
+
+- ao final do processo individual por cliente, sera implementado o disparo de e-mail e WhatsApp via API

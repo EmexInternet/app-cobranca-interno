@@ -9,7 +9,7 @@ import httpx
 from app_python_automacao.browser_automation import HubsoftBrowserAutomation
 from app_python_automacao.cancelamentos_api import CancelamentosClient
 from app_python_automacao.hubsoft_api import HubsoftApiClient
-from app_python_automacao.models import CancelamentoRecord, WorkflowReport
+from app_python_automacao.models import CancelamentoRecord, HubsoftAtendimento, WorkflowReport
 from app_python_automacao.multa_rescisoria import MultaRescisoriaCalculator, format_decimal_brl
 from app_python_automacao.settings import Settings
 from app_python_automacao.utils import (
@@ -20,6 +20,12 @@ from app_python_automacao.utils import (
 )
 
 LOGGER = logging.getLogger(__name__)
+
+
+RELATO_ENCERRAMENTO_FASE_1 = (
+    "TENTATIVAS DE CONTATO PARA NEGOCIACAO SEM SUCESSO.\n\n"
+    "> CONTRATO CANCELADO POR INADIMPLENCIA.\n"
+)
 
 
 class CobrancaWorkflow:
@@ -33,10 +39,16 @@ class CobrancaWorkflow:
         dry_run: bool = False,
         limit: int | None = None,
         only_cliente_id: int | None = None,
+        dia_inicio: date | None = None,
+        dia_fim: date | None = None,
         skip_browser: bool = False,
         headless: bool = True,
     ) -> WorkflowReport:
-        dia_inicio, dia_fim = compute_cancelamentos_window(date.today())
+        if dia_inicio is None or dia_fim is None:
+            auto_dia_inicio, auto_dia_fim = compute_cancelamentos_window(date.today())
+            dia_inicio = dia_inicio or auto_dia_inicio
+            dia_fim = dia_fim or auto_dia_fim
+
         cancelamentos = self.cancelamentos_client.fetch_cancelamentos(dia_inicio, dia_fim)
         report = WorkflowReport(total_cancelamentos_lidos=len(cancelamentos))
 
@@ -148,19 +160,39 @@ class CobrancaWorkflow:
                 else:
                     self.hubsoft_client.add_message(
                         atendimento.id_atendimento,
-                        self.settings.relato_encerramento,
+                        RELATO_ENCERRAMENTO_FASE_1,
                     )
                     self.hubsoft_client.close_atendimento(atendimento.id_atendimento)
                     base_report.total_atendimentos_fechados += 1
 
+                atendimentos_cancelamento = self.hubsoft_client.get_pending_cancelamento_inadimplencia(
+                    cancelamento.id_cliente_servico
+                )
+                protocolo_observacao = atendimento.protocolo
+                if atendimentos_cancelamento:
+                    protocolo_observacao = atendimentos_cancelamento[0].protocolo
+                    LOGGER.info(
+                        "Observacao do cliente %s sera vinculada ao protocolo do atendimento de cancelamento: %s.",
+                        cancelamento.id_cliente,
+                        protocolo_observacao,
+                    )
+                else:
+                    LOGGER.warning(
+                        "Cliente_servico %s nao possui atendimento de cancelamento pendente. "
+                        "Observacao permanecera com o protocolo de cobranca %s.",
+                        cancelamento.id_cliente_servico,
+                        protocolo_observacao,
+                    )
+
                 browser.add_observation(
                     id_cliente=cancelamento.id_cliente,
-                    protocolo=atendimento.protocolo,
+                    protocolo=protocolo_observacao,
                 )
                 base_report.total_observacoes_salvas += 0 if dry_run else 1
 
                 self._process_cancelamento_phase_two(
                     cancelamento=cancelamento,
+                    atendimentos=atendimentos_cancelamento,
                     dry_run=dry_run,
                     base_report=base_report,
                 )
@@ -170,10 +202,11 @@ class CobrancaWorkflow:
     def _process_cancelamento_phase_two(
         self,
         cancelamento: CancelamentoRecord,
+        atendimentos: list[HubsoftAtendimento] | None,
         dry_run: bool,
         base_report: WorkflowReport,
     ) -> None:
-        atendimentos = self.hubsoft_client.get_pending_cancelamento_inadimplencia(cancelamento.id_cliente_servico)
+        atendimentos = atendimentos or []
         if not atendimentos:
             base_report.total_sem_atendimento_cancelamento += 1
             LOGGER.warning(

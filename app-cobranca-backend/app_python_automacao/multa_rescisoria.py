@@ -87,10 +87,13 @@ def format_decimal_brl(value: Decimal) -> str:
 def _parse_date(value: str | None) -> date | None:
     if not value:
         return None
-    try:
-        return datetime.strptime(value[:10], "%Y-%m-%d").date()
-    except ValueError:
-        return None
+    raw = value.strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(raw[:10], fmt).date()
+        except ValueError:
+            continue
+    return None
 
 
 def _full_months_between(start: date, end: date) -> int:

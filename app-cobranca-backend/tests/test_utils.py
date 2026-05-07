@@ -130,6 +130,11 @@ class UtilsTestCase(unittest.TestCase):
         self.assertEqual(multa.valor_multa, Decimal("100.00"))
         self.assertIn("VALOR DA MULTA RESCISORIA: R$ 100,00", multa.mensagem_calculo)
 
+    def test_multa_rescisoria_accepts_dd_mm_yyyy_dates(self) -> None:
+        multa = MultaRescisoriaCalculator(Decimal("600.00")).calculate("26/07/2025", "07/05/2026")
+        self.assertFalse(multa.dados_invalidos)
+        self.assertGreater(multa.valor_multa, Decimal("0.00"))
+
     def test_format_decimal_brl_outputs_brazilian_currency_number(self) -> None:
         self.assertEqual(format_decimal_brl(Decimal("1234.5")), "1.234,50")
 

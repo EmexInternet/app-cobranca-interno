@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+from datetime import date
 
 from app_python_automacao.logging_utils import setup_logging
 from app_python_automacao.settings import Settings
@@ -21,6 +22,8 @@ def build_parser() -> argparse.ArgumentParser:
     executar.add_argument("--dry-run", action="store_true", help="Nao grava alteracoes via API nem no Hubsoft Web.")
     executar.add_argument("--limit", type=int, default=None, help="Limita a quantidade de cancelamentos processados.")
     executar.add_argument("--cliente-id", type=int, default=None, help="Processa apenas um id_cliente especifico.")
+    executar.add_argument("--dia-inicio", type=_parse_iso_date, default=None, help="Sobrescreve o dia_inicio da API de cancelamentos no formato YYYY-MM-DD.")
+    executar.add_argument("--dia-fim", type=_parse_iso_date, default=None, help="Sobrescreve o dia_fim da API de cancelamentos no formato YYYY-MM-DD.")
     executar.add_argument("--skip-browser", action="store_true", help="Executa somente a parte de API, sem abrir o Chrome.")
     executar.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
 
@@ -66,6 +69,8 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             limit=args.limit,
             only_cliente_id=args.cliente_id,
+            dia_inicio=args.dia_inicio,
+            dia_fim=args.dia_fim,
             skip_browser=args.skip_browser,
             headless=not args.headful,
         )
@@ -95,3 +100,10 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.error("Comando invalido.")
     return 2
+
+
+def _parse_iso_date(value: str) -> date:
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("Use o formato YYYY-MM-DD.") from exc
