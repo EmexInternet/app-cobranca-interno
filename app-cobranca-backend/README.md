@@ -159,12 +159,12 @@ Site:
 Tecnologia prevista:
 
 - Python
-- Chromium
-- Playwright com perfil persistente em disco
+- Google Chrome
+- Selenium com perfil persistente em disco
 
 Motivo da escolha:
 
-- permite controlar Chromium na VPS Linux
+- permite controlar o Chrome da VPS Linux
 - facilita persistencia de sessao sem relogar sempre
 - oferece espera e interacao mais robustas do que automacao baseada so em tempo fixo
 
@@ -187,7 +187,7 @@ Sequencia documentada de login:
 
 Persistencia de login:
 
-- usar diretorio de perfil ou `storage_state` salvo localmente
+- usar diretorio de perfil persistente do Chrome
 - reutilizar a sessao nas proximas execucoes
 - relogar apenas quando a sessao expirar
 
@@ -228,7 +228,7 @@ Regra de teste:
 ## Estrutura inicial da pasta
 
 - `docs/`: detalhes tecnicos e arquitetura
-- `storage/`: sessao persistente do Chromium e arquivos operacionais locais
+- `storage/`: sessao persistente do Chrome e arquivos operacionais locais
 - `logs/`: logs da automacao na VPS
 - `requirements.txt`: dependencias previstas da fase 1
 - `.env.example`: modelo das variaveis de ambiente
@@ -242,7 +242,7 @@ Ja existe uma primeira base funcional com:
 - cliente HTTP para API de cancelamentos
 - cliente HTTP para autenticacao e operacoes da API Hubsoft
 - filtro normalizado para comparar textos com e sem acento
-- automacao Web via Playwright com perfil persistente de Chromium
+- automacao Web via Selenium com perfil persistente de Chrome
 - CLI com subcomandos para fluxo completo, fluxo direto por cliente_servico e observacao isolada
 - testes unitarios basicos para janela de datas e filtros
 
@@ -255,11 +255,13 @@ Ja existe uma primeira base funcional com:
 pip install -r requirements.txt
 ```
 
-3. Instalar o navegador do Playwright:
+3. Garantir que o Google Chrome esteja instalado no sistema.
 
 ```bash
-python -m playwright install chromium
+google-chrome --version
 ```
+
+Se o Chrome nao estiver no `PATH`, preencher `HUBSOFT_CHROME_BINARY_PATH` no `.env`.
 
 4. Copiar `.env.example` para `.env` e preencher os valores reais na VPS.
 

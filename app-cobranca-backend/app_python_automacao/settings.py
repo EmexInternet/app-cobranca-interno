@@ -23,11 +23,13 @@ class Settings:
     hubsoft_web_url: str
     hubsoft_web_email: str
     hubsoft_web_password: str
+    hubsoft_chrome_binary_path: str
     hubsoft_storage_dir: str
     hubsoft_storage_state: str
     hubsoft_login_post_enter_wait_ms: int
     hubsoft_login_timeout_ms: int
     hubsoft_observacao_post_save_wait_ms: int
+    hubsoft_element_timeout_seconds: int
     log_level: str
     log_dir: str
     timezone: str
@@ -56,6 +58,7 @@ class Settings:
             hubsoft_web_url=os.getenv("HUBSOFT_WEB_URL", "https://emex.hubsoft.com.br"),
             hubsoft_web_email=os.getenv("HUBSOFT_WEB_EMAIL", ""),
             hubsoft_web_password=os.getenv("HUBSOFT_WEB_PASSWORD", ""),
+            hubsoft_chrome_binary_path=os.getenv("HUBSOFT_CHROME_BINARY_PATH", ""),
             hubsoft_storage_dir=os.getenv("HUBSOFT_STORAGE_DIR", str(BASE_DIR / "storage" / "browser-profile")),
             hubsoft_storage_state=os.getenv("HUBSOFT_STORAGE_STATE", str(BASE_DIR / "storage" / "hubsoft-state.json")),
             hubsoft_login_post_enter_wait_ms=int(os.getenv("HUBSOFT_LOGIN_POST_ENTER_WAIT_MS", "6000")),
@@ -64,6 +67,7 @@ class Settings:
                 os.getenv("HUBSOFT_OBSERVACAO_POST_SAVE_WAIT_MS")
                 or os.getenv("HUBSOFT_OBSERVACAO_PRE_SAVE_WAIT_MS", "2000")
             ),
+            hubsoft_element_timeout_seconds=int(os.getenv("HUBSOFT_ELEMENT_TIMEOUT_SECONDS", "15")),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             log_dir=os.getenv("LOG_DIR", str(BASE_DIR / "logs")),
             timezone=os.getenv("TIMEZONE", "America/Sao_Paulo"),

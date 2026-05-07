@@ -31,7 +31,7 @@ Objetivo:
 - filtrar somente clientes com `motivo_cancelamento = CANCELAMENTO AUTOMATICO INADIMPLENCIA`
 - consultar atendimentos pendentes de cobranca no Hubsoft
 - relatar e fechar os atendimentos encontrados
-- acessar o Hubsoft Web via Chromium para registrar a observacao obrigatoria no cadastro do cliente
+- acessar o Hubsoft Web via Chrome para registrar a observacao obrigatoria no cadastro do cliente
 - manter persistencia de login para evitar autenticacao manual a cada execucao
 
 Detalhamento tecnico:

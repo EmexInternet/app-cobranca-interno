@@ -21,8 +21,8 @@ def build_parser() -> argparse.ArgumentParser:
     executar.add_argument("--dry-run", action="store_true", help="Nao grava alteracoes via API nem no Hubsoft Web.")
     executar.add_argument("--limit", type=int, default=None, help="Limita a quantidade de cancelamentos processados.")
     executar.add_argument("--cliente-id", type=int, default=None, help="Processa apenas um id_cliente especifico.")
-    executar.add_argument("--skip-browser", action="store_true", help="Executa somente a parte de API, sem abrir o Chromium.")
-    executar.add_argument("--headful", action="store_true", help="Abre o Chromium com interface visual.")
+    executar.add_argument("--skip-browser", action="store_true", help="Executa somente a parte de API, sem abrir o Chrome.")
+    executar.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
 
     atendimento = subparsers.add_parser(
         "atendimento",
@@ -36,8 +36,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="ID do cliente_servico para consulta de atendimentos pendentes.",
     )
     atendimento.add_argument("--dry-run", action="store_true", help="Nao grava alteracoes via API nem no Hubsoft Web.")
-    atendimento.add_argument("--skip-browser", action="store_true", help="Executa somente a consulta da API, sem abrir o Chromium.")
-    atendimento.add_argument("--headful", action="store_true", help="Abre o Chromium com interface visual.")
+    atendimento.add_argument("--skip-browser", action="store_true", help="Executa somente a consulta da API, sem abrir o Chrome.")
+    atendimento.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
 
     observacao = subparsers.add_parser(
         "observacao",
@@ -46,7 +46,7 @@ def build_parser() -> argparse.ArgumentParser:
     observacao.add_argument("--cliente-id", type=int, required=True, help="ID do cliente no Hubsoft Web.")
     observacao.add_argument("--protocolo", required=True, help="Protocolo a ser escrito na observacao.")
     observacao.add_argument("--dry-run", action="store_true", help="Nao clica em salvar no Hubsoft Web.")
-    observacao.add_argument("--headful", action="store_true", help="Abre o Chromium com interface visual.")
+    observacao.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
 
     return parser
 
