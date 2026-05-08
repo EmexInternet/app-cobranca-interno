@@ -178,9 +178,9 @@ class CobrancaWorkflow:
 
                 if dry_run:
                     LOGGER.info(
-                        "Dry-run: atendimento %s seria relatado, fechado e observado com protocolo %s.",
+                        "Dry-run fase 1: atendimento %s de cobranca seria relatado e fechado. "
+                        "O protocolo da observacao sera definido apos consultar o atendimento de cancelamento.",
                         atendimento.id_atendimento,
-                        atendimento.protocolo,
                     )
                 else:
                     self.hubsoft_client.add_message(

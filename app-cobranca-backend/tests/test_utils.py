@@ -81,6 +81,25 @@ class UtilsTestCase(unittest.TestCase):
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0]["id_atendimento"], 99)
 
+    def test_extract_items_supports_empty_list_payload(self) -> None:
+        self.assertEqual(extract_items([]), [])
+
+    def test_extract_items_supports_itens_key_for_financeiro(self) -> None:
+        payload = {
+            "sucesso": True,
+            "itens": [
+                {
+                    "id_fatura": 10,
+                    "status": "pendente",
+                    "valor": "123.45",
+                    "detalhamento": [{"descricao": "MENSALIDADE"}],
+                }
+            ],
+        }
+        items = extract_items(payload)
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["id_fatura"], 10)
+
     def test_workflow_rule_uses_only_one_atendimento_per_servico(self) -> None:
         atendimentos = [
             HubsoftAtendimento(id_atendimento=1, protocolo="P1", tipo_atendimento="COBRANCA"),

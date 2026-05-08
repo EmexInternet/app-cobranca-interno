@@ -115,6 +115,9 @@ def build_negotiation_summary(
 
 def extract_items(payload: Any) -> list[dict[str, Any]]:
     if isinstance(payload, list):
+        if not payload:
+            return []
+
         if _is_list_of_dicts(payload):
             return payload
 
@@ -127,7 +130,7 @@ def extract_items(payload: Any) -> list[dict[str, Any]]:
         if _looks_like_record(payload):
             return [payload]
 
-        for key in ("data", "dados", "items", "results", "resultado"):
+        for key in ("data", "dados", "items", "itens", "results", "resultado"):
             value = payload.get(key)
             if isinstance(value, list):
                 return value
@@ -150,10 +153,13 @@ def _is_list_of_dicts(value: list[Any]) -> bool:
 def _looks_like_record(value: dict[str, Any]) -> bool:
     known_keys = {
         "id_atendimento",
+        "id_fatura",
         "protocolo",
         "tipo_atendimento",
         "id_cliente",
         "id_cliente_servico",
         "motivo_cancelamento",
+        "valor",
+        "detalhamento",
     }
     return any(key in value for key in known_keys)
