@@ -4,12 +4,14 @@ Base das automacoes internas executadas em VPS Linux.
 
 ## Objetivo atual
 
-Executar um fluxo operacional em 2 fases, por cliente:
+Executar um fluxo operacional em 3 fases, por cliente:
 
 1. fase 1:
    busca cancelamentos em uma API externa, localiza o atendimento de cobranca, relata, fecha e registra a observacao obrigatoria no Hubsoft Web
 2. fase 2:
    localiza o atendimento de cancelamento por inadimplencia, consulta as faturas pendentes, calcula multa e descontos, relata a negociacao e tenta fechar o atendimento
+3. fase 3:
+   dispara o WhatsApp individual via API `sendHsm` apos a conclusao das fases anteriores
 
 ## Status atual do que ja foi realizado
 
@@ -26,9 +28,9 @@ Hoje o backend ja executa, por cliente:
 9. montagem da mensagem financeira da fase 2 para o atendimento de cancelamento
 10. fallback de relato quando o atendimento de cancelamento nao puder ser fechado
 
-Item registrado para implementacao ao final do processo individual por cliente:
+Itens ainda em aberto:
 
-- disparo de e-mail e WhatsApp via API, apos a conclusao das fases 1 e 2
+- confirmar integracao de e-mail em etapa separada
 
 ## Regras principais do processo
 
@@ -183,7 +185,7 @@ Fluxo:
 6. relatar a negociacao no atendimento de cancelamento
 7. tentar fechar o atendimento
 8. se o fechamento falhar por retorno/O.S. em aberto, registrar o relato alternativo e deixar para finalizacao futura
-9. etapa futura: disparar e-mail e WhatsApp via API ao final do processo individual do cliente
+9. fase 3: disparar WhatsApp individual via API ao final do processo individual do cliente
 
 #### Consulta de atendimento de cancelamento
 
@@ -252,7 +254,7 @@ Mensagem enviada pelo backend:
 
 ```txt
 > CONTRATO CANCELADO POR INADIMPLENCIA.
-> E-MAIL E WHATSAPP ENVIADOS.
+> MENSAGEM FINANCEIRA REGISTRADA PARA TRATATIVA.
 
 VALOR TOTAL DA DIVIDA: R$ {TotalDivida}
 
@@ -281,6 +283,68 @@ Se o fechamento falhar, o backend relata:
 ```txt
 ATENDIMENTO NAO PODE SER FINALIZADO DEVIDO O.S EM ABERTO - SERA FINALIZADO EM MASSA QUANDO NOVO PROCESSO DO FLUXO DE RETIRADA FOR RODADO
 ```
+
+#### Opcao para pular o fechamento da fase 2
+
+Quando for necessario deixar o atendimento de cancelamento pendente para encerramento em massa, a CLI aceita:
+
+```bash
+python -m app_python_automacao executar --skip-phase-two-close
+```
+
+Nesse modo o backend nao fecha o atendimento de cancelamento e registra o relato:
+
+```txt
+ATENDIMENTO NAO SERA FINALIZADO NESTE FLUXO INDIVIDUAL. SERA ENCERRADO EM MASSA QUANDO NOVO PROCESSO DO FLUXO DE RETIRADA FOR RODADO.
+```
+
+### 2.2 Fase 3: WhatsApp individual via API `sendHsm`
+
+Endpoint configurado por padrao:
+
+```txt
+POST https://emex.matrixdobrasil.ai/rest/v1/sendHsm
+```
+
+Headers esperados:
+
+```json
+{
+  "accept": "application/json",
+  "Content-Type": "application/json",
+  "Authorization": "${WHATSAPP_API_TOKEN}"
+}
+```
+
+Payload enviado pelo backend:
+
+```json
+{
+  "cod_conta": 1,
+  "hsm": 43,
+  "variaveis": {
+    "1": "NOME DO CLIENTE"
+  },
+  "contato": {
+    "nome": "NOME DO CLIENTE",
+    "telefone": "5511999999999"
+  },
+  "tipo_envio": 2
+}
+```
+
+Regras implementadas:
+
+- a fase 3 roda apos a fase 2 do mesmo cliente
+- o telefone do cancelamento e normalizado para digitos, com prefixo `55`
+- se o telefone estiver ausente ou invalido, o envio e ignorado e o fluxo segue
+- se `WHATSAPP_API_ENABLED=false`, a fase 3 fica desabilitada sem bloquear as fases 1 e 2
+- quando a API responder erro HTTP, o fluxo registra falha no log e no relatorio
+
+Observacao sobre documentacao:
+
+- nao foi localizada documentacao publica aberta desse endpoint em buscas web feitas em `2026-05-08`
+- por isso a implementacao usa o contrato operacional informado internamente neste projeto
 
 ### 3. Automacao Web no Hubsoft
 
@@ -411,6 +475,16 @@ Variaveis novas da fase 2:
 - `FINANCEIRO_DESCRICOES_IGNORADAS`
 - `MULTA_RESCISORIA_VALOR_BENEFICIO_PADRAO`
 
+Variaveis novas da fase 3:
+
+- `WHATSAPP_API_ENABLED`
+- `WHATSAPP_API_URL`
+- `WHATSAPP_API_TOKEN`
+- `WHATSAPP_COD_CONTA`
+- `WHATSAPP_HSM_ID`
+- `WHATSAPP_TIPO_ENVIO`
+- `WHATSAPP_COUNTRY_CODE`
+
 ## Como executar
 
 Fluxo completo a partir da API de cancelamentos:
@@ -423,6 +497,12 @@ Fluxo completo sem gravar alteracoes:
 
 ```bash
 python -m app_python_automacao executar --dry-run
+```
+
+Fluxo completo sem fechar o atendimento da fase 2:
+
+```bash
+python -m app_python_automacao executar --skip-phase-two-close
 ```
 
 Fluxo direto para um cliente_servico especifico, sem consultar a primeira API:
@@ -458,4 +538,4 @@ python -m unittest discover -s tests
 3. adicionar retentativas, timeout por etapa e relatorio de execucao em JSON
 4. preparar agendamento em VPS via `cron`
 5. confirmar a fonte oficial do valor-base usado no calculo da multa rescisoria
-6. implementar o disparo de e-mail e WhatsApp via API no encerramento do fluxo individual por cliente
+6. implementar o disparo de e-mail em etapa complementar ao WhatsApp

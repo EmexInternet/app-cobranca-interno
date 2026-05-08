@@ -41,6 +41,13 @@ class Settings:
     tipo_atendimento_cancelamento_alvo: str
     financeiro_descricoes_ignoradas: list[str]
     multa_rescisoria_valor_beneficio_padrao: str
+    whatsapp_api_enabled: bool
+    whatsapp_api_url: str
+    whatsapp_api_token: str
+    whatsapp_cod_conta: int
+    whatsapp_hsm_id: int
+    whatsapp_tipo_envio: int
+    whatsapp_country_code: str
     teste_codigo_cliente: int
     teste_id_cliente: int
 
@@ -95,6 +102,13 @@ class Settings:
                 )
             ),
             multa_rescisoria_valor_beneficio_padrao=os.getenv("MULTA_RESCISORIA_VALOR_BENEFICIO_PADRAO", "600.00"),
+            whatsapp_api_enabled=_parse_bool(os.getenv("WHATSAPP_API_ENABLED", "true")),
+            whatsapp_api_url=os.getenv("WHATSAPP_API_URL", "https://emex.matrixdobrasil.ai/rest/v1/sendHsm"),
+            whatsapp_api_token=os.getenv("WHATSAPP_API_TOKEN", ""),
+            whatsapp_cod_conta=int(os.getenv("WHATSAPP_COD_CONTA", "1")),
+            whatsapp_hsm_id=int(os.getenv("WHATSAPP_HSM_ID", "43")),
+            whatsapp_tipo_envio=int(os.getenv("WHATSAPP_TIPO_ENVIO", "2")),
+            whatsapp_country_code=os.getenv("WHATSAPP_COUNTRY_CODE", "55"),
             teste_codigo_cliente=int(os.getenv("TESTE_CODIGO_CLIENTE", "45098")),
             teste_id_cliente=int(os.getenv("TESTE_ID_CLIENTE", "44847")),
         )
@@ -126,3 +140,7 @@ class Settings:
 
 def _split_csv_env(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _parse_bool(value: str) -> bool:
+    return value.strip().lower() in {"1", "true", "sim", "yes", "on"}

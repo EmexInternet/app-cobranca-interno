@@ -13,6 +13,7 @@ from app_python_automacao.utils import (
     filter_atendimentos_cobranca,
     filter_cancelamentos,
     filter_faturas_by_detalhamento,
+    normalize_phone_br,
     normalize_text,
 )
 
@@ -137,6 +138,15 @@ class UtilsTestCase(unittest.TestCase):
 
     def test_format_decimal_brl_outputs_brazilian_currency_number(self) -> None:
         self.assertEqual(format_decimal_brl(Decimal("1234.5")), "1.234,50")
+
+    def test_normalize_phone_br_adds_country_code(self) -> None:
+        self.assertEqual(normalize_phone_br("(11) 99876-5432"), "5511998765432")
+
+    def test_normalize_phone_br_preserves_existing_country_code(self) -> None:
+        self.assertEqual(normalize_phone_br("+55 (11) 99876-5432"), "5511998765432")
+
+    def test_normalize_phone_br_returns_none_for_short_number(self) -> None:
+        self.assertIsNone(normalize_phone_br("12345"))
 
 
 if __name__ == "__main__":

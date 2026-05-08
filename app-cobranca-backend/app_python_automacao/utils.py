@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import unicodedata
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
@@ -24,6 +25,29 @@ def normalize_text(value: str | None) -> str:
     normalized = unicodedata.normalize("NFKD", value)
     without_accents = "".join(char for char in normalized if not unicodedata.combining(char))
     return " ".join(without_accents.upper().split())
+
+
+def normalize_phone_br(value: str | None, country_code: str = "55") -> str | None:
+    if value is None:
+        return None
+
+    digits = re.sub(r"\D+", "", value)
+    if not digits:
+        return None
+
+    if digits.startswith("0"):
+        digits = digits.lstrip("0")
+
+    if digits.startswith(country_code):
+        normalized = digits
+    elif len(digits) in {10, 11}:
+        normalized = f"{country_code}{digits}"
+    else:
+        normalized = digits
+
+    if len(normalized) < len(country_code) + 10:
+        return None
+    return normalized
 
 
 def compute_cancelamentos_window(today: date) -> tuple[date, date]:

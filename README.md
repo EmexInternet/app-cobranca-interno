@@ -1,6 +1,6 @@
 # App Cobranca Interno
 
-Projeto interno dividido em 2 fases:
+Projeto interno dividido em 3 fases:
 
 1. `app-cobranca-backend`: automacoes internas executadas em uma VPS Linux.
 2. `site`: interface operacional que sera hospedada na Hostinger em uma etapa posterior.
@@ -33,6 +33,8 @@ Objetivo:
   consultar atendimentos pendentes de cobranca no Hubsoft, relatar, fechar e registrar observacao obrigatoria
 - executar a fase 2 operacional logo apos a fase 1, por cliente:
   consultar atendimento de cancelamento por inadimplencia, buscar faturas, calcular multa e descontos, relatar negociacao e tentar fechar o atendimento
+- executar a fase 3 logo apos a fase 2, por cliente:
+  disparar o WhatsApp individual pela API `sendHsm`
 - acessar o Hubsoft Web via Chrome para registrar a observacao obrigatoria no cadastro do cliente
 - manter persistencia de login para evitar autenticacao manual a cada execucao
 
@@ -60,7 +62,7 @@ Objetivo:
 
 ## Status atual
 
-Backend com fase 1 funcional e fase 2 em implementacao inicial no mesmo fluxo por cliente.
+Backend com fases 1 e 2 funcionais e fase 3 de WhatsApp integrada ao mesmo fluxo por cliente.
 
 Registro de roadmap:
 

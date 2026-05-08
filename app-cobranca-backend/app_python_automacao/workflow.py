@@ -18,6 +18,7 @@ from app_python_automacao.utils import (
     filter_cancelamentos,
     filter_faturas_by_detalhamento,
 )
+from app_python_automacao.whatsapp_api import WhatsAppApiClient
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,12 +28,23 @@ RELATO_ENCERRAMENTO_FASE_1 = (
     "> CONTRATO CANCELADO POR INADIMPLENCIA.\n"
 )
 
+RELATO_FASE_2_ENCERRAMENTO_EM_MASSA = (
+    "ATENDIMENTO NAO SERA FINALIZADO NESTE FLUXO INDIVIDUAL. "
+    "SERA ENCERRADO EM MASSA QUANDO NOVO PROCESSO DO FLUXO DE RETIRADA FOR RODADO."
+)
+
+RELATO_FASE_2_FALHA_ENCERRAMENTO = (
+    "ATENDIMENTO NAO PODE SER FINALIZADO DEVIDO O.S EM ABERTO - "
+    "SERA FINALIZADO EM MASSA QUANDO NOVO PROCESSO DO FLUXO DE RETIRADA FOR RODADO"
+)
+
 
 class CobrancaWorkflow:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
         self.cancelamentos_client = CancelamentosClient(settings)
         self.hubsoft_client = HubsoftApiClient(settings)
+        self.whatsapp_client = WhatsAppApiClient(settings)
 
     def run_full(
         self,
@@ -42,6 +54,7 @@ class CobrancaWorkflow:
         dia_inicio: date | None = None,
         dia_fim: date | None = None,
         skip_browser: bool = False,
+        skip_phase_two_close: bool = False,
         headless: bool = True,
     ) -> WorkflowReport:
         if dia_inicio is None or dia_fim is None:
@@ -70,6 +83,7 @@ class CobrancaWorkflow:
             elegiveis,
             dry_run=dry_run,
             skip_browser=skip_browser,
+            skip_phase_two_close=skip_phase_two_close,
             headless=headless,
             base_report=report,
         )
@@ -77,16 +91,25 @@ class CobrancaWorkflow:
     def run_single_service(
         self,
         id_cliente: int,
+        codigo_cliente: int | None,
         id_cliente_servico: int,
+        nome_cliente: str = "MODO TESTE / EXECUCAO DIRETA",
+        telefone: str | None = None,
+        data_venda: str | None = None,
+        data_cancelamento: str | None = None,
         dry_run: bool = False,
         skip_browser: bool = False,
+        skip_phase_two_close: bool = False,
         headless: bool = True,
     ) -> WorkflowReport:
         cancelamento = CancelamentoRecord(
-            codigo_cliente=self.settings.teste_codigo_cliente,
+            codigo_cliente=codigo_cliente or self.settings.teste_codigo_cliente,
             id_cliente=id_cliente,
             id_cliente_servico=id_cliente_servico,
-            nome_razaosocial="MODO TESTE / EXECUCAO DIRETA",
+            nome_razaosocial=nome_cliente,
+            telefone_primario=telefone,
+            data_venda=data_venda,
+            data_cancelamento=data_cancelamento,
             motivo_cancelamento=self.settings.motivo_cancelamento_alvo,
         )
         report = WorkflowReport(total_cancelamentos_lidos=1, total_cancelamentos_processados=1)
@@ -94,6 +117,7 @@ class CobrancaWorkflow:
             [cancelamento],
             dry_run=dry_run,
             skip_browser=skip_browser,
+            skip_phase_two_close=skip_phase_two_close,
             headless=headless,
             base_report=report,
         )
@@ -113,6 +137,7 @@ class CobrancaWorkflow:
         cancelamentos: list[CancelamentoRecord],
         dry_run: bool,
         skip_browser: bool,
+        skip_phase_two_close: bool,
         headless: bool,
         base_report: WorkflowReport,
     ) -> WorkflowReport:
@@ -194,6 +219,7 @@ class CobrancaWorkflow:
                     cancelamento=cancelamento,
                     atendimentos=atendimentos_cancelamento,
                     dry_run=dry_run,
+                    skip_phase_two_close=skip_phase_two_close,
                     base_report=base_report,
                 )
 
@@ -204,6 +230,7 @@ class CobrancaWorkflow:
         cancelamento: CancelamentoRecord,
         atendimentos: list[HubsoftAtendimento] | None,
         dry_run: bool,
+        skip_phase_two_close: bool,
         base_report: WorkflowReport,
     ) -> None:
         atendimentos = atendimentos or []
@@ -240,9 +267,10 @@ class CobrancaWorkflow:
 
         if dry_run:
             LOGGER.info(
-                "Dry-run fase 2: atendimento %s seria relatado e fechado. "
+                "Dry-run fase 2: atendimento %s seria relatado%s. "
                 "faturas_consideradas=%s valor_multa=R$ %s total_divida=R$ %s",
                 atendimento.id_atendimento,
+                " e fechado" if not skip_phase_two_close else " e ficaria pendente para encerramento em massa",
                 resumo.quantidade_faturas_consideradas,
                 format_decimal_brl(resumo.valor_multa),
                 format_decimal_brl(resumo.total_divida),
@@ -250,19 +278,55 @@ class CobrancaWorkflow:
             return
 
         self.hubsoft_client.add_message(atendimento.id_atendimento, mensagem)
+        if skip_phase_two_close:
+            LOGGER.info(
+                "Encerramento da fase 2 foi pulado para o atendimento %s. Relato de massa sera registrado.",
+                atendimento.id_atendimento,
+            )
+            self.hubsoft_client.add_message(atendimento.id_atendimento, RELATO_FASE_2_ENCERRAMENTO_EM_MASSA)
+        else:
+            try:
+                self.hubsoft_client.close_atendimento(atendimento.id_atendimento)
+                base_report.total_atendimentos_cancelamento_fechados += 1
+            except httpx.HTTPStatusError:
+                LOGGER.warning(
+                    "Atendimento %s nao pode ser finalizado por retorno. Relato alternativo sera registrado.",
+                    atendimento.id_atendimento,
+                )
+                self.hubsoft_client.add_message(
+                    atendimento.id_atendimento,
+                    RELATO_FASE_2_FALHA_ENCERRAMENTO,
+                )
+
+        self._process_phase_three_whatsapp(cancelamento, base_report)
+
+    def _process_phase_three_whatsapp(
+        self,
+        cancelamento: CancelamentoRecord,
+        base_report: WorkflowReport,
+    ) -> None:
+        if not self.whatsapp_client.is_enabled():
+            base_report.total_whatsapp_ignorado += 1
+            LOGGER.info("Fase 3 de WhatsApp desabilitada. Cliente %s sera ignorado.", cancelamento.id_cliente)
+            return
+
         try:
-            self.hubsoft_client.close_atendimento(atendimento.id_atendimento)
-            base_report.total_atendimentos_cancelamento_fechados += 1
-        except httpx.HTTPStatusError:
-            LOGGER.warning(
-                "Atendimento %s nao pode ser finalizado por retorno. Relato alternativo sera registrado.",
-                atendimento.id_atendimento,
+            enviado = self.whatsapp_client.send_phase_three_hsm(
+                nome_cliente=cancelamento.nome_razaosocial,
+                telefone=cancelamento.telefone_primario,
             )
-            self.hubsoft_client.add_message(
-                atendimento.id_atendimento,
-                "ATENDIMENTO NÃO PODE SER FINALIZADO DEVIDO O.S EM ABERTO - "
-                "SERÁ FINALIZADO EM MASSA QUANDO NOVO PROCESSO DO FLUXO DE RETIRADA FOR RODADO",
+        except httpx.HTTPError:
+            base_report.total_whatsapp_falhou += 1
+            LOGGER.exception(
+                "Falha ao enviar WhatsApp da fase 3 para cliente %s.",
+                cancelamento.id_cliente,
             )
+            return
+
+        if enviado:
+            base_report.total_whatsapp_enviado += 1
+        else:
+            base_report.total_whatsapp_ignorado += 1
 
     def _calculate_multa(self, cancelamento: CancelamentoRecord):
         calculator = MultaRescisoriaCalculator(
@@ -279,20 +343,20 @@ class CobrancaWorkflow:
 
     def _build_cancelamento_message(self, resumo) -> str:
         return (
-            "> CONTRATO CANCELADO POR INADIMPLÊNCIA.\n"
-            "> E-MAIL E WHATSAPP ENVIADOS.\n\n"
-            f"VALOR TOTAL DA DÍVIDA: R$ {format_decimal_brl(resumo.total_divida)}\n\n"
-            "CASO O(A) CLIENTE ENTRE EM CONTATO, FAVOR INFORMAR SOBRE A PENDÊNCIA FINANCEIRA EM ABERTO E NEGOCIAÇÕES DISPONÍVEIS:\n\n"
-            "OPÇÃO 1 - SE O(A) CLIENTE DESEJAR RETORNAR COM O SERVIÇO:\n\n"
-            f"FICARÁ ISENTO DA MULTA RESCISÓRIA E O VALOR DO DÉBITO PASSA A SER R$ {format_decimal_brl(resumo.divida_sem_multa)}.\n"
-            f"SERÁ CONCEDIDO 50% DE DESCONTO E O VALOR PARA PAGAMENTO FICA EM R$ {format_decimal_brl(resumo.divida_sem_multa_50)} + TAXA DE ATIVAÇÃO (SUJEITO À AVALIAÇÃO).\n"
-            "A NEGOCIAÇÃO PODERÁ SER PAGA POR BOLETO OU NA LOJA COM VENCIMENTO PARA 3 DIAS À FRENTE.\n"
-            "DEIXAR O(A) CLIENTE CIENTE QUE A INSTALAÇÃO SÓ OCORRERÁ APÓS O PAGAMENTOS DOS DÉBITOS E ENTREGA DOS EQUIPAMENTOS EM COMODATO (CASO NÃO TENHAM SIDO REMOVIDOS).\n\n"
-            "OPÇÃO 2 - SE O(A) CLIENTE DESEJAR SOMENTE LIQUIDAR O DÉBITO:\n\n"
-            f"SERÁ CONCEDIDO 40% DE DESCONTO E O VALOR TOTAL PARA PAGAMENTO FICA EM R$ {format_decimal_brl(resumo.divida_40)}.\n"
-            "A NEGOCIAÇÃO PODERÁ SER PAGA POR BOLETO OU NA LOJA COM VENCIMENTO PARA 3 DIAS À FRENTE.\n"
-            "DEIXAR O(A) CLIENTE CIENTE SOBRE A DEVOLUÇÃO DOS EQUIPAMENTOS EM COMODATO (CASO NÃO TENHAM SIDO REMOVIDOS).\n\n"
-            "> SE O(A) CLIENTE ALEGAR PERDA/DANO, VERIFICAR COM O SETOR DE FATURAMENTO UMA NOVA NEGOCIAÇÃO."
+            "> CONTRATO CANCELADO POR INADIMPLENCIA.\n"
+            "> MENSAGEM FINANCEIRA REGISTRADA PARA TRATATIVA.\n\n"
+            f"VALOR TOTAL DA DIVIDA: R$ {format_decimal_brl(resumo.total_divida)}\n\n"
+            "CASO O(A) CLIENTE ENTRE EM CONTATO, FAVOR INFORMAR SOBRE A PENDENCIA FINANCEIRA EM ABERTO E NEGOCIACOES DISPONIVEIS:\n\n"
+            "OPCAO 1 - SE O(A) CLIENTE DESEJAR RETORNAR COM O SERVICO:\n\n"
+            f"FICARA ISENTO DA MULTA RESCISORIA E O VALOR DO DEBITO PASSA A SER R$ {format_decimal_brl(resumo.divida_sem_multa)}.\n"
+            f"SERA CONCEDIDO 50% DE DESCONTO E O VALOR PARA PAGAMENTO FICA EM R$ {format_decimal_brl(resumo.divida_sem_multa_50)} + TAXA DE ATIVACAO (SUJEITO A AVALIACAO).\n"
+            "A NEGOCIACAO PODERA SER PAGA POR BOLETO OU NA LOJA COM VENCIMENTO PARA 3 DIAS A FRENTE.\n"
+            "DEIXAR O(A) CLIENTE CIENTE QUE A INSTALACAO SO OCORRERA APOS O PAGAMENTO DOS DEBITOS E ENTREGA DOS EQUIPAMENTOS EM COMODATO (CASO NAO TENHAM SIDO REMOVIDOS).\n\n"
+            "OPCAO 2 - SE O(A) CLIENTE DESEJAR SOMENTE LIQUIDAR O DEBITO:\n\n"
+            f"SERA CONCEDIDO 40% DE DESCONTO E O VALOR TOTAL PARA PAGAMENTO FICA EM R$ {format_decimal_brl(resumo.divida_40)}.\n"
+            "A NEGOCIACAO PODERA SER PAGA POR BOLETO OU NA LOJA COM VENCIMENTO PARA 3 DIAS A FRENTE.\n"
+            "DEIXAR O(A) CLIENTE CIENTE SOBRE A DEVOLUCAO DOS EQUIPAMENTOS EM COMODATO (CASO NAO TENHAM SIDO REMOVIDOS).\n\n"
+            "> SE O(A) CLIENTE ALEGAR PERDA/DANO, VERIFICAR COM O SETOR DE FATURAMENTO UMA NOVA NEGOCIACAO."
         )
 
 

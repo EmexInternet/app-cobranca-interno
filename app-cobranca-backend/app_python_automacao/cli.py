@@ -25,6 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
     executar.add_argument("--dia-inicio", type=_parse_iso_date, default=None, help="Sobrescreve o dia_inicio da API de cancelamentos no formato YYYY-MM-DD.")
     executar.add_argument("--dia-fim", type=_parse_iso_date, default=None, help="Sobrescreve o dia_fim da API de cancelamentos no formato YYYY-MM-DD.")
     executar.add_argument("--skip-browser", action="store_true", help="Executa somente a parte de API, sem abrir o Chrome.")
+    executar.add_argument("--skip-phase-two-close", action="store_true", help="Nao fecha o atendimento de cancelamento na fase 2 e registra o relato de encerramento em massa.")
     executar.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
 
     atendimento = subparsers.add_parser(
@@ -32,14 +33,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Executa o fluxo direto para um cliente_servico especifico, sem consultar a API de cancelamentos.",
     )
     atendimento.add_argument("--cliente-id", type=int, required=True, help="ID do cliente no Hubsoft Web.")
+    atendimento.add_argument("--codigo-cliente", type=int, default=None, help="Codigo do cliente vindo da API de cancelamentos.")
     atendimento.add_argument(
         "--cliente-servico-id",
         type=int,
         required=True,
         help="ID do cliente_servico para consulta de atendimentos pendentes.",
     )
+    atendimento.add_argument("--nome-cliente", default="MODO TESTE / EXECUCAO DIRETA", help="Nome usado no relato e no disparo do WhatsApp.")
+    atendimento.add_argument("--telefone", default=None, help="Telefone do cliente para a fase 3.")
+    atendimento.add_argument("--data-venda", default=None, help="Data da venda para calculo da multa. Aceita DD/MM/YYYY ou YYYY-MM-DD.")
+    atendimento.add_argument("--data-cancelamento", default=None, help="Data do cancelamento para calculo da multa. Aceita DD/MM/YYYY ou YYYY-MM-DD.")
     atendimento.add_argument("--dry-run", action="store_true", help="Nao grava alteracoes via API nem no Hubsoft Web.")
     atendimento.add_argument("--skip-browser", action="store_true", help="Executa somente a consulta da API, sem abrir o Chrome.")
+    atendimento.add_argument("--skip-phase-two-close", action="store_true", help="Nao fecha o atendimento de cancelamento na fase 2 e registra o relato de encerramento em massa.")
     atendimento.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
 
     observacao = subparsers.add_parser(
@@ -72,6 +79,7 @@ def main(argv: list[str] | None = None) -> int:
             dia_inicio=args.dia_inicio,
             dia_fim=args.dia_fim,
             skip_browser=args.skip_browser,
+            skip_phase_two_close=args.skip_phase_two_close,
             headless=not args.headful,
         )
         LOGGER.info("Execucao finalizada. %s", report.to_log_message())
@@ -80,9 +88,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "atendimento":
         report = workflow.run_single_service(
             id_cliente=args.cliente_id,
+            codigo_cliente=args.codigo_cliente,
             id_cliente_servico=args.cliente_servico_id,
+            nome_cliente=args.nome_cliente,
+            telefone=args.telefone,
+            data_venda=args.data_venda,
+            data_cancelamento=args.data_cancelamento,
             dry_run=args.dry_run,
             skip_browser=args.skip_browser,
+            skip_phase_two_close=args.skip_phase_two_close,
             headless=not args.headful,
         )
         LOGGER.info("Execucao finalizada. %s", report.to_log_message())

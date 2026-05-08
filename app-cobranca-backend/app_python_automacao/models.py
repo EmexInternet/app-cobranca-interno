@@ -107,6 +107,9 @@ class WorkflowReport:
     total_atendimentos_cancelamento_fechados: int = 0
     total_sem_atendimento_cancelamento: int = 0
     total_faturas_consideradas: int = 0
+    total_whatsapp_enviado: int = 0
+    total_whatsapp_ignorado: int = 0
+    total_whatsapp_falhou: int = 0
 
     def to_log_message(self) -> str:
         return (
@@ -119,7 +122,10 @@ class WorkflowReport:
             f"atendimentos_cancelamento_encontrados={self.total_atendimentos_cancelamento_encontrados}, "
             f"atendimentos_cancelamento_fechados={self.total_atendimentos_cancelamento_fechados}, "
             f"sem_atendimento_cancelamento={self.total_sem_atendimento_cancelamento}, "
-            f"faturas_consideradas={self.total_faturas_consideradas}"
+            f"faturas_consideradas={self.total_faturas_consideradas}, "
+            f"whatsapp_enviado={self.total_whatsapp_enviado}, "
+            f"whatsapp_ignorado={self.total_whatsapp_ignorado}, "
+            f"whatsapp_falhou={self.total_whatsapp_falhou}"
         )
 
 
