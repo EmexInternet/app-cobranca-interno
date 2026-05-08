@@ -45,6 +45,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     atendimento.add_argument("--nome-cliente", default="MODO TESTE / EXECUCAO DIRETA", help="Nome usado no relato e no disparo do WhatsApp.")
     atendimento.add_argument("--telefone", default=None, help="Telefone do cliente para a fase 3.")
+    atendimento.add_argument("--plano", default=None, help="Plano/servico do cliente para a fase 1.1.")
+    atendimento.add_argument("--numero-plano", type=int, default=None, help="Numero do plano/servico do cliente para a fase 1.1.")
     atendimento.add_argument("--data-venda", default=None, help="Data da venda para calculo da multa. Aceita DD/MM/YYYY ou YYYY-MM-DD.")
     atendimento.add_argument("--data-cancelamento", default=None, help="Data do cancelamento para calculo da multa. Aceita DD/MM/YYYY ou YYYY-MM-DD.")
     atendimento.add_argument("--dry-run", action="store_true", help="Nao grava alteracoes via API nem no Hubsoft Web.")
@@ -102,6 +104,8 @@ def main(argv: list[str] | None = None) -> int:
             id_cliente_servico=args.cliente_servico_id,
             nome_cliente=args.nome_cliente,
             telefone=args.telefone,
+            plano=args.plano,
+            numero_plano=args.numero_plano,
             data_venda=args.data_venda,
             data_cancelamento=args.data_cancelamento,
             dry_run=args.dry_run,
@@ -137,6 +141,7 @@ def main(argv: list[str] | None = None) -> int:
                 telefone=args.telefone,
                 status=PhaseStatusEntry(
                     fase_1="nao_aplicavel",
+                    fase_1_1="nao_aplicavel",
                     fase_2="nao_aplicavel",
                     fase_3="erro",
                     erro=exc.message,
@@ -158,6 +163,7 @@ def main(argv: list[str] | None = None) -> int:
                 telefone=args.telefone,
                 status=PhaseStatusEntry(
                     fase_1="nao_aplicavel",
+                    fase_1_1="nao_aplicavel",
                     fase_2="nao_aplicavel",
                     fase_3="erro",
                     erro="falha http no envio do hsm",

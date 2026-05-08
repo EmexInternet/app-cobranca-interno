@@ -41,6 +41,20 @@ class Settings:
     tipo_atendimento_cancelamento_alvo: str
     financeiro_descricoes_ignoradas: list[str]
     multa_rescisoria_valor_beneficio_padrao: str
+    phase_1_1_enabled: bool
+    legacy_browser: str
+    legacy_browser_profile_dir: str
+    legacy_browser_profile_name: str
+    legacy_selenium_timeout: int
+    legacy_selenium_validation_interval: int
+    legacy_selenium_max_wait: int
+    legacy_default_descricao_cobranca: str
+    legacy_default_tipo_servico_cobranca: str
+    legacy_default_forma_cobranca: str
+    legacy_multa_cli_script: str
+    legacy_equipment_charge_service_type: str
+    legacy_equipment_charge_description: str
+    legacy_equipment_charge_value: float
     whatsapp_api_enabled: bool
     whatsapp_api_url: str
     whatsapp_api_token: str
@@ -102,6 +116,35 @@ class Settings:
                 )
             ),
             multa_rescisoria_valor_beneficio_padrao=os.getenv("MULTA_RESCISORIA_VALOR_BENEFICIO_PADRAO", "600.00"),
+            phase_1_1_enabled=_parse_bool(os.getenv("PHASE_1_1_ENABLED", "true")),
+            legacy_browser=os.getenv("LEGACY_BROWSER", "chrome").strip().lower(),
+            legacy_browser_profile_dir=os.getenv("LEGACY_BROWSER_PROFILE_DIR", ""),
+            legacy_browser_profile_name=os.getenv("LEGACY_BROWSER_PROFILE_NAME", "Default").strip() or "Default",
+            legacy_selenium_timeout=int(os.getenv("LEGACY_SELENIUM_TIMEOUT", "30")),
+            legacy_selenium_validation_interval=int(os.getenv("LEGACY_SELENIUM_VALIDATION_INTERVAL", "10")),
+            legacy_selenium_max_wait=int(os.getenv("LEGACY_SELENIUM_MAX_WAIT", "60")),
+            legacy_default_descricao_cobranca=os.getenv(
+                "LEGACY_DEFAULT_DESCRICAO_COBRANCA",
+                "MULTA RESCISORIA",
+            ),
+            legacy_default_tipo_servico_cobranca=os.getenv(
+                "LEGACY_DEFAULT_TIPO_SERVICO_COBRANCA",
+                "MULTA RESCISORIA",
+            ),
+            legacy_default_forma_cobranca=os.getenv(
+                "LEGACY_DEFAULT_FORMA_COBRANCA",
+                "BOLETO INTERNO - EMEX",
+            ),
+            legacy_multa_cli_script=os.getenv("LEGACY_MULTA_CLI_SCRIPT", ""),
+            legacy_equipment_charge_service_type=os.getenv(
+                "LEGACY_EQUIPMENT_CHARGE_SERVICE_TYPE",
+                "EQUIPAMENTO EM COMODATO",
+            ),
+            legacy_equipment_charge_description=os.getenv(
+                "LEGACY_EQUIPMENT_CHARGE_DESCRIPTION",
+                "MULTA DE EQUIPAMENTO EM COMODATO",
+            ),
+            legacy_equipment_charge_value=float(os.getenv("LEGACY_EQUIPMENT_CHARGE_VALUE", "300")),
             whatsapp_api_enabled=_parse_bool(os.getenv("WHATSAPP_API_ENABLED", "true")),
             whatsapp_api_url=os.getenv("WHATSAPP_API_URL", "https://emex.matrixdobrasil.ai/rest/v1/sendHsm"),
             whatsapp_api_token=os.getenv("WHATSAPP_API_TOKEN", ""),

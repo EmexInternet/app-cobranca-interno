@@ -10,8 +10,10 @@ from app_python_automacao.browser_automation import HubsoftBrowserAutomation
 from app_python_automacao.cancelamentos_api import CancelamentosClient
 from app_python_automacao.error_reporter import ErrorReporter, PhaseStatusEntry
 from app_python_automacao.hubsoft_api import HubsoftApiClient
+from app_python_automacao.legacy_billing import LegacyBillingRunner
 from app_python_automacao.models import CancelamentoRecord, HubsoftAtendimento, WorkflowReport
 from app_python_automacao.multa_rescisoria import MultaRescisoriaCalculator, format_decimal_brl
+from app_python_automacao.processing_state import ProcessingStateStore
 from app_python_automacao.settings import Settings
 from app_python_automacao.utils import (
     build_negotiation_summary,
@@ -47,6 +49,8 @@ class CobrancaWorkflow:
         self.hubsoft_client = HubsoftApiClient(settings)
         self.whatsapp_client = WhatsAppApiClient(settings)
         self.error_reporter = ErrorReporter()
+        self.processing_state = ProcessingStateStore()
+        self.legacy_billing_runner: LegacyBillingRunner | None = None
 
     def run_full(
         self,
@@ -61,17 +65,25 @@ class CobrancaWorkflow:
     ) -> WorkflowReport:
         if dia_inicio is None or dia_fim is None:
             auto_dia_inicio, auto_dia_fim = compute_cancelamentos_window(date.today())
-            dia_inicio = dia_inicio or auto_dia_inicio
+            dia_inicio = dia_inicio or self.processing_state.get_next_dia_inicio(auto_dia_inicio)
             dia_fim = dia_fim or auto_dia_fim
 
         cancelamentos = self.cancelamentos_client.fetch_cancelamentos(dia_inicio, dia_fim)
         report = WorkflowReport(total_cancelamentos_lidos=len(cancelamentos))
 
-        elegiveis = [
+        elegiveis_base = [
             item
             for item in filter_cancelamentos(cancelamentos, self.settings.motivo_cancelamento_alvo)
             if only_cliente_id is None or item.id_cliente == only_cliente_id
         ]
+
+        elegiveis = [item for item in elegiveis_base if not self.processing_state.is_processed(item)]
+        report.total_clientes_ja_processados = len(elegiveis_base) - len(elegiveis)
+        if report.total_clientes_ja_processados:
+            LOGGER.info(
+                "%s clientes ja processados foram ignorados por persistencia local.",
+                report.total_clientes_ja_processados,
+            )
 
         if limit is not None:
             elegiveis = elegiveis[:limit]
@@ -79,9 +91,11 @@ class CobrancaWorkflow:
         report.total_cancelamentos_processados = len(elegiveis)
         if not elegiveis:
             LOGGER.warning("Nenhum cancelamento elegivel encontrado para processar.")
+            if not dry_run:
+                self.processing_state.update_last_dia_fim(dia_fim)
             return report
 
-        return self._process_cancelamentos(
+        report = self._process_cancelamentos(
             elegiveis,
             dry_run=dry_run,
             skip_browser=skip_browser,
@@ -89,6 +103,9 @@ class CobrancaWorkflow:
             headless=headless,
             base_report=report,
         )
+        if not dry_run:
+            self.processing_state.update_last_dia_fim(dia_fim)
+        return report
 
     def run_single_service(
         self,
@@ -97,6 +114,8 @@ class CobrancaWorkflow:
         id_cliente_servico: int,
         nome_cliente: str = "MODO TESTE / EXECUCAO DIRETA",
         telefone: str | None = None,
+        plano: str | None = None,
+        numero_plano: int | None = None,
         data_venda: str | None = None,
         data_cancelamento: str | None = None,
         dry_run: bool = False,
@@ -110,6 +129,8 @@ class CobrancaWorkflow:
             id_cliente_servico=id_cliente_servico,
             nome_razaosocial=nome_cliente,
             telefone_primario=telefone,
+            plano=plano,
+            numero_plano=numero_plano,
             data_venda=data_venda,
             data_cancelamento=data_cancelamento,
             motivo_cancelamento=self.settings.motivo_cancelamento_alvo,
@@ -152,6 +173,7 @@ class CobrancaWorkflow:
         with browser_context as browser:
             for cancelamento in cancelamentos:
                 fase_1_status = "nao_iniciada"
+                fase_1_1_status = "nao_iniciada"
                 fase_2_status = "nao_iniciada"
                 fase_3_status = "nao_iniciada"
                 try:
@@ -198,6 +220,32 @@ class CobrancaWorkflow:
                         base_report.total_atendimentos_fechados += 1
                         fase_1_status = "sucesso"
 
+                    try:
+                        fase_1_1_status = self._process_phase_one_point_one(
+                            cancelamento=cancelamento,
+                            dry_run=dry_run,
+                            skip_browser=skip_browser,
+                            headless=headless,
+                        )
+                    except Exception as exc:
+                        fase_1_1_status = "erro"
+                        self.error_reporter.append(
+                            cancelamento=cancelamento,
+                            status=PhaseStatusEntry(
+                                fase_1=fase_1_status,
+                                fase_1_1=fase_1_1_status,
+                                fase_2="nao_iniciada",
+                                fase_3="nao_iniciada",
+                                erro="erro na fase 1.1",
+                                detalhe=str(exc),
+                            ),
+                        )
+                        LOGGER.exception(
+                            "Erro na fase 1.1 para cliente %s / cliente_servico %s. O fluxo seguira para observacao e fase 2.",
+                            cancelamento.id_cliente,
+                            cancelamento.id_cliente_servico,
+                        )
+
                     atendimentos_cancelamento = self.hubsoft_client.get_pending_cancelamento_inadimplencia(
                         cancelamento.id_cliente_servico,
                     )
@@ -235,6 +283,7 @@ class CobrancaWorkflow:
                         cancelamento=cancelamento,
                         status=PhaseStatusEntry(
                             fase_1=fase_1_status,
+                            fase_1_1=fase_1_1_status,
                             fase_2=fase_2_status,
                             fase_3=fase_3_status,
                             erro="erro inesperado no fluxo do cliente",
@@ -246,7 +295,15 @@ class CobrancaWorkflow:
                         cancelamento.id_cliente,
                         cancelamento.id_cliente_servico,
                     )
-                    continue
+                finally:
+                    if not dry_run:
+                        self.processing_state.mark_processed(
+                            cancelamento,
+                            fase_1=fase_1_status,
+                            fase_1_1=fase_1_1_status,
+                            fase_2=fase_2_status,
+                            fase_3=fase_3_status,
+                        )
 
         return base_report
 
@@ -326,6 +383,40 @@ class CobrancaWorkflow:
         fase_3_status = self._process_phase_three_whatsapp(cancelamento, base_report)
         return "sucesso", fase_3_status
 
+    def _process_phase_one_point_one(
+        self,
+        *,
+        cancelamento: CancelamentoRecord,
+        dry_run: bool,
+        skip_browser: bool,
+        headless: bool,
+    ) -> str:
+        if not self.settings.phase_1_1_enabled:
+            LOGGER.info("Fase 1.1 desabilitada por configuracao.")
+            return "desabilitada"
+
+        if skip_browser:
+            LOGGER.info("Fase 1.1 ignorada por skip-browser para cliente %s.", cancelamento.id_cliente)
+            return "ignorada_skip_browser"
+
+        if self.legacy_billing_runner is None:
+            self.legacy_billing_runner = LegacyBillingRunner(self.settings)
+
+        result = self.legacy_billing_runner.run_phase_one_one(
+            cancelamento=cancelamento,
+            dry_run=dry_run,
+            headless=headless,
+        )
+        LOGGER.info(
+            "Fase 1.1 concluida para cliente %s. multa=R$ %s cobranca_principal=%s cobranca_equipamento=%s dry_run=%s",
+            cancelamento.id_cliente,
+            format_decimal_brl(Decimal(str(result.fine_value))),
+            result.principal_charge_created,
+            result.equipment_charge_created,
+            dry_run,
+        )
+        return "dry_run" if dry_run else "sucesso"
+
     def _process_phase_three_whatsapp(
         self,
         cancelamento: CancelamentoRecord,
@@ -347,6 +438,7 @@ class CobrancaWorkflow:
                 cancelamento=cancelamento,
                 status=PhaseStatusEntry(
                     fase_1="sucesso",
+                    fase_1_1="sucesso",
                     fase_2="sucesso",
                     fase_3="erro",
                     erro=exc.message,
@@ -367,6 +459,7 @@ class CobrancaWorkflow:
                 cancelamento=cancelamento,
                 status=PhaseStatusEntry(
                     fase_1="sucesso",
+                    fase_1_1="sucesso",
                     fase_2="sucesso",
                     fase_3="erro",
                     erro="falha http no envio do hsm",

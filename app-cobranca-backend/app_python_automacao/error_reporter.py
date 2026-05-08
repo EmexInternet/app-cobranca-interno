@@ -14,6 +14,7 @@ DEFAULT_ERROR_FILE = BASE_DIR / "storage" / "erros_fluxo.txt"
 @dataclass(slots=True)
 class PhaseStatusEntry:
     fase_1: str
+    fase_1_1: str
     fase_2: str
     fase_3: str
     erro: str
@@ -57,6 +58,7 @@ class ErrorReporter:
         parts.extend(
             [
                 f"fase_1={status.fase_1}",
+                f"fase_1_1={status.fase_1_1}",
                 f"fase_2={status.fase_2}",
                 f"fase_3={status.fase_3}",
                 f"erro={status.erro}",

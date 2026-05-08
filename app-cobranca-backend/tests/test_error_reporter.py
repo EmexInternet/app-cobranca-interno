@@ -29,6 +29,7 @@ class ErrorReporterTestCase(unittest.TestCase):
                 cancelamento=cancelamento,
                 status=PhaseStatusEntry(
                     fase_1="sucesso",
+                    fase_1_1="sucesso",
                     fase_2="sucesso",
                     fase_3="erro",
                     erro="Contato possui atendimento ativo",
@@ -40,6 +41,7 @@ class ErrorReporterTestCase(unittest.TestCase):
             content = target.read_text(encoding="utf-8")
             self.assertIn("codigo_cliente=45098", content)
             self.assertIn("fase_1=sucesso", content)
+            self.assertIn("fase_1_1=sucesso", content)
             self.assertIn("fase_2=sucesso", content)
             self.assertIn("fase_3=erro", content)
             self.assertIn("codigo_erro=13", content)

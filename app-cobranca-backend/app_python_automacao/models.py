@@ -99,6 +99,7 @@ class CancelamentoNegotiationSummary:
 class WorkflowReport:
     total_cancelamentos_lidos: int = 0
     total_cancelamentos_processados: int = 0
+    total_clientes_ja_processados: int = 0
     total_atendimentos_encontrados: int = 0
     total_atendimentos_fechados: int = 0
     total_observacoes_salvas: int = 0
@@ -115,6 +116,7 @@ class WorkflowReport:
         return (
             f"cancelamentos_lidos={self.total_cancelamentos_lidos}, "
             f"cancelamentos_processados={self.total_cancelamentos_processados}, "
+            f"clientes_ja_processados={self.total_clientes_ja_processados}, "
             f"atendimentos_encontrados={self.total_atendimentos_encontrados}, "
             f"atendimentos_fechados={self.total_atendimentos_fechados}, "
             f"observacoes_salvas={self.total_observacoes_salvas}, "
