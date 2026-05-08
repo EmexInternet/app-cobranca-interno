@@ -118,7 +118,10 @@ class Settings:
             multa_rescisoria_valor_beneficio_padrao=os.getenv("MULTA_RESCISORIA_VALOR_BENEFICIO_PADRAO", "600.00"),
             phase_1_1_enabled=_parse_bool(os.getenv("PHASE_1_1_ENABLED", "true")),
             legacy_browser=os.getenv("LEGACY_BROWSER", "chrome").strip().lower(),
-            legacy_browser_profile_dir=os.getenv("LEGACY_BROWSER_PROFILE_DIR", ""),
+            legacy_browser_profile_dir=os.getenv(
+                "LEGACY_BROWSER_PROFILE_DIR",
+                str(BASE_DIR / "storage" / "legacy-chromium-profile"),
+            ),
             legacy_browser_profile_name=os.getenv("LEGACY_BROWSER_PROFILE_NAME", "Default").strip() or "Default",
             legacy_selenium_timeout=int(os.getenv("LEGACY_SELENIUM_TIMEOUT", "30")),
             legacy_selenium_validation_interval=int(os.getenv("LEGACY_SELENIUM_VALIDATION_INTERVAL", "10")),

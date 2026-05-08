@@ -93,7 +93,9 @@ class LegacyBillingRunner:
         if not script_path:
             script_path = str((LEGACY_DIR / "scripts" / "calculate_multa.js").resolve())
 
-        profile_dir = self.settings.legacy_browser_profile_dir.strip() or self.settings.hubsoft_storage_dir
+        profile_dir = self.settings.legacy_browser_profile_dir.strip()
+        if not profile_dir:
+            profile_dir = str((Path(self.settings.hubsoft_storage_dir).resolve().parent / "legacy-chromium-profile"))
 
         return self.legacy_config.Settings(
             hubsoft_web_base_url=self.settings.hubsoft_web_url.rstrip("/"),
