@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import json
 
 import httpx
 
@@ -8,6 +9,22 @@ from app_python_automacao.settings import Settings
 from app_python_automacao.utils import normalize_phone_br
 
 LOGGER = logging.getLogger(__name__)
+
+
+class WhatsAppHsmError(Exception):
+    def __init__(
+        self,
+        *,
+        status_code: int,
+        cod_error: str | None,
+        message: str,
+        response_text: str,
+    ) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.cod_error = cod_error
+        self.message = message
+        self.response_text = response_text
 
 
 class WhatsAppApiClient:
@@ -67,6 +84,33 @@ class WhatsAppApiClient:
                 json=payload,
                 headers=headers,
             )
-            response.raise_for_status()
+            try:
+                response.raise_for_status()
+            except httpx.HTTPStatusError:
+                cod_error = None
+                message = response.text
+                try:
+                    body = response.json()
+                    if isinstance(body, dict):
+                        cod_error = str(body.get("cod_error")) if body.get("cod_error") is not None else None
+                        message = str(body.get("msg") or body.get("message") or response.text)
+                    else:
+                        body = response.text
+                except (ValueError, json.JSONDecodeError):
+                    body = response.text
+
+                LOGGER.error(
+                    "Falha HTTP ao enviar HSM. status=%s cod_error=%s msg=%s body=%s",
+                    response.status_code,
+                    cod_error,
+                    message,
+                    response.text,
+                )
+                raise WhatsAppHsmError(
+                    status_code=response.status_code,
+                    cod_error=cod_error,
+                    message=message,
+                    response_text=response.text,
+                ) from None
 
         return True

@@ -8,6 +8,7 @@ import httpx
 
 from app_python_automacao.browser_automation import HubsoftBrowserAutomation
 from app_python_automacao.cancelamentos_api import CancelamentosClient
+from app_python_automacao.error_reporter import ErrorReporter, PhaseStatusEntry
 from app_python_automacao.hubsoft_api import HubsoftApiClient
 from app_python_automacao.models import CancelamentoRecord, HubsoftAtendimento, WorkflowReport
 from app_python_automacao.multa_rescisoria import MultaRescisoriaCalculator, format_decimal_brl
@@ -18,7 +19,7 @@ from app_python_automacao.utils import (
     filter_cancelamentos,
     filter_faturas_by_detalhamento,
 )
-from app_python_automacao.whatsapp_api import WhatsAppApiClient
+from app_python_automacao.whatsapp_api import WhatsAppApiClient, WhatsAppHsmError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -45,6 +46,7 @@ class CobrancaWorkflow:
         self.cancelamentos_client = CancelamentosClient(settings)
         self.hubsoft_client = HubsoftApiClient(settings)
         self.whatsapp_client = WhatsAppApiClient(settings)
+        self.error_reporter = ErrorReporter()
 
     def run_full(
         self,
@@ -149,79 +151,102 @@ class CobrancaWorkflow:
 
         with browser_context as browser:
             for cancelamento in cancelamentos:
-                LOGGER.info(
-                    "Processando cliente %s / cliente_servico %s.",
-                    cancelamento.id_cliente,
-                    cancelamento.id_cliente_servico,
-                )
-                atendimentos = self.hubsoft_client.get_pending_cobranca(cancelamento.id_cliente_servico)
+                fase_1_status = "nao_iniciada"
+                fase_2_status = "nao_iniciada"
+                fase_3_status = "nao_iniciada"
+                try:
+                    LOGGER.info(
+                        "Processando cliente %s / cliente_servico %s.",
+                        cancelamento.id_cliente,
+                        cancelamento.id_cliente_servico,
+                    )
+                    atendimentos = self.hubsoft_client.get_pending_cobranca(cancelamento.id_cliente_servico)
 
-                if not atendimentos:
-                    base_report.total_sem_atendimento += 1
-                    LOGGER.warning(
-                        "Nenhum atendimento de cobranca pendente encontrado para cliente_servico %s.",
+                    if not atendimentos:
+                        base_report.total_sem_atendimento += 1
+                        LOGGER.warning(
+                            "Nenhum atendimento de cobranca pendente encontrado para cliente_servico %s.",
+                            cancelamento.id_cliente_servico,
+                        )
+                        continue
+
+                    atendimento = atendimentos[0]
+                    base_report.total_atendimentos_encontrados += 1
+                    if len(atendimentos) > 1:
+                        LOGGER.info(
+                            "Cliente_servico %s possui %s atendimentos de cobranca pendentes. "
+                            "Somente o primeiro sera utilizado: id_atendimento=%s protocolo=%s.",
+                            cancelamento.id_cliente_servico,
+                            len(atendimentos),
+                            atendimento.id_atendimento,
+                            atendimento.protocolo,
+                        )
+
+                    if dry_run:
+                        LOGGER.info(
+                            "Dry-run fase 1: atendimento %s de cobranca seria relatado e fechado. "
+                            "O protocolo da observacao sera definido apos consultar o atendimento de cancelamento.",
+                            atendimento.id_atendimento,
+                        )
+                        fase_1_status = "dry_run"
+                    else:
+                        self.hubsoft_client.add_message(
+                            atendimento.id_atendimento,
+                            RELATO_ENCERRAMENTO_FASE_1,
+                        )
+                        self.hubsoft_client.close_atendimento(atendimento.id_atendimento)
+                        base_report.total_atendimentos_fechados += 1
+                        fase_1_status = "sucesso"
+
+                    atendimentos_cancelamento = self.hubsoft_client.get_pending_cancelamento_inadimplencia(
+                        cancelamento.id_cliente_servico,
+                    )
+                    protocolo_observacao = atendimento.protocolo
+                    if atendimentos_cancelamento:
+                        protocolo_observacao = atendimentos_cancelamento[0].protocolo
+                        LOGGER.info(
+                            "Observacao do cliente %s sera vinculada ao protocolo do atendimento de cancelamento: %s.",
+                            cancelamento.id_cliente,
+                            protocolo_observacao,
+                        )
+                    else:
+                        LOGGER.warning(
+                            "Cliente_servico %s nao possui atendimento de cancelamento pendente. "
+                            "Observacao permanecera com o protocolo de cobranca %s.",
+                            cancelamento.id_cliente_servico,
+                            protocolo_observacao,
+                        )
+
+                    browser.add_observation(
+                        id_cliente=cancelamento.id_cliente,
+                        protocolo=protocolo_observacao,
+                    )
+                    base_report.total_observacoes_salvas += 0 if dry_run else 1
+
+                    fase_2_status, fase_3_status = self._process_cancelamento_phase_two(
+                        cancelamento=cancelamento,
+                        atendimentos=atendimentos_cancelamento,
+                        dry_run=dry_run,
+                        skip_phase_two_close=skip_phase_two_close,
+                        base_report=base_report,
+                    )
+                except Exception as exc:
+                    self.error_reporter.append(
+                        cancelamento=cancelamento,
+                        status=PhaseStatusEntry(
+                            fase_1=fase_1_status,
+                            fase_2=fase_2_status,
+                            fase_3=fase_3_status,
+                            erro="erro inesperado no fluxo do cliente",
+                            detalhe=str(exc),
+                        ),
+                    )
+                    LOGGER.exception(
+                        "Erro ao processar cliente %s / cliente_servico %s. O fluxo seguira para o proximo cliente.",
+                        cancelamento.id_cliente,
                         cancelamento.id_cliente_servico,
                     )
                     continue
-
-                atendimento = atendimentos[0]
-                base_report.total_atendimentos_encontrados += 1
-                if len(atendimentos) > 1:
-                    LOGGER.info(
-                        "Cliente_servico %s possui %s atendimentos de cobranca pendentes. "
-                        "Somente o primeiro sera utilizado: id_atendimento=%s protocolo=%s.",
-                        cancelamento.id_cliente_servico,
-                        len(atendimentos),
-                        atendimento.id_atendimento,
-                        atendimento.protocolo,
-                    )
-
-                if dry_run:
-                    LOGGER.info(
-                        "Dry-run fase 1: atendimento %s de cobranca seria relatado e fechado. "
-                        "O protocolo da observacao sera definido apos consultar o atendimento de cancelamento.",
-                        atendimento.id_atendimento,
-                    )
-                else:
-                    self.hubsoft_client.add_message(
-                        atendimento.id_atendimento,
-                        RELATO_ENCERRAMENTO_FASE_1,
-                    )
-                    self.hubsoft_client.close_atendimento(atendimento.id_atendimento)
-                    base_report.total_atendimentos_fechados += 1
-
-                atendimentos_cancelamento = self.hubsoft_client.get_pending_cancelamento_inadimplencia(
-                    cancelamento.id_cliente_servico
-                )
-                protocolo_observacao = atendimento.protocolo
-                if atendimentos_cancelamento:
-                    protocolo_observacao = atendimentos_cancelamento[0].protocolo
-                    LOGGER.info(
-                        "Observacao do cliente %s sera vinculada ao protocolo do atendimento de cancelamento: %s.",
-                        cancelamento.id_cliente,
-                        protocolo_observacao,
-                    )
-                else:
-                    LOGGER.warning(
-                        "Cliente_servico %s nao possui atendimento de cancelamento pendente. "
-                        "Observacao permanecera com o protocolo de cobranca %s.",
-                        cancelamento.id_cliente_servico,
-                        protocolo_observacao,
-                    )
-
-                browser.add_observation(
-                    id_cliente=cancelamento.id_cliente,
-                    protocolo=protocolo_observacao,
-                )
-                base_report.total_observacoes_salvas += 0 if dry_run else 1
-
-                self._process_cancelamento_phase_two(
-                    cancelamento=cancelamento,
-                    atendimentos=atendimentos_cancelamento,
-                    dry_run=dry_run,
-                    skip_phase_two_close=skip_phase_two_close,
-                    base_report=base_report,
-                )
 
         return base_report
 
@@ -232,7 +257,7 @@ class CobrancaWorkflow:
         dry_run: bool,
         skip_phase_two_close: bool,
         base_report: WorkflowReport,
-    ) -> None:
+    ) -> tuple[str, str]:
         atendimentos = atendimentos or []
         if not atendimentos:
             base_report.total_sem_atendimento_cancelamento += 1
@@ -240,7 +265,7 @@ class CobrancaWorkflow:
                 "Nenhum atendimento de cancelamento por inadimplencia pendente encontrado para cliente_servico %s.",
                 cancelamento.id_cliente_servico,
             )
-            return
+            return "sem_atendimento_cancelamento", "nao_iniciada"
 
         atendimento = atendimentos[0]
         base_report.total_atendimentos_cancelamento_encontrados += 1
@@ -275,7 +300,7 @@ class CobrancaWorkflow:
                 format_decimal_brl(resumo.valor_multa),
                 format_decimal_brl(resumo.total_divida),
             )
-            return
+            return "dry_run", "nao_iniciada"
 
         self.hubsoft_client.add_message(atendimento.id_atendimento, mensagem)
         if skip_phase_two_close:
@@ -298,35 +323,68 @@ class CobrancaWorkflow:
                     RELATO_FASE_2_FALHA_ENCERRAMENTO,
                 )
 
-        self._process_phase_three_whatsapp(cancelamento, base_report)
+        fase_3_status = self._process_phase_three_whatsapp(cancelamento, base_report)
+        return "sucesso", fase_3_status
 
     def _process_phase_three_whatsapp(
         self,
         cancelamento: CancelamentoRecord,
         base_report: WorkflowReport,
-    ) -> None:
+    ) -> str:
         if not self.whatsapp_client.is_enabled():
             base_report.total_whatsapp_ignorado += 1
             LOGGER.info("Fase 3 de WhatsApp desabilitada. Cliente %s sera ignorado.", cancelamento.id_cliente)
-            return
+            return "ignorado_desabilitado"
 
         try:
             enviado = self.whatsapp_client.send_phase_three_hsm(
                 nome_cliente=cancelamento.nome_razaosocial,
                 telefone=cancelamento.telefone_primario,
             )
-        except httpx.HTTPError:
+        except WhatsAppHsmError as exc:
             base_report.total_whatsapp_falhou += 1
+            self.error_reporter.append(
+                cancelamento=cancelamento,
+                status=PhaseStatusEntry(
+                    fase_1="sucesso",
+                    fase_2="sucesso",
+                    fase_3="erro",
+                    erro=exc.message,
+                    codigo_erro=exc.cod_error,
+                    detalhe=f"status_http={exc.status_code}",
+                ),
+            )
+            LOGGER.error(
+                "Falha ao enviar WhatsApp da fase 3 para cliente %s. cod_error=%s msg=%s",
+                cancelamento.id_cliente,
+                exc.cod_error,
+                exc.message,
+            )
+            return "erro"
+        except httpx.HTTPError as exc:
+            base_report.total_whatsapp_falhou += 1
+            self.error_reporter.append(
+                cancelamento=cancelamento,
+                status=PhaseStatusEntry(
+                    fase_1="sucesso",
+                    fase_2="sucesso",
+                    fase_3="erro",
+                    erro="falha http no envio do hsm",
+                    detalhe=str(exc),
+                ),
+            )
             LOGGER.exception(
-                "Falha ao enviar WhatsApp da fase 3 para cliente %s.",
+                "Falha HTTP ao enviar WhatsApp da fase 3 para cliente %s.",
                 cancelamento.id_cliente,
             )
-            return
+            return "erro"
 
         if enviado:
             base_report.total_whatsapp_enviado += 1
+            return "sucesso"
         else:
             base_report.total_whatsapp_ignorado += 1
+            return "ignorado"
 
     def _calculate_multa(self, cancelamento: CancelamentoRecord):
         calculator = MultaRescisoriaCalculator(

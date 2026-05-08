@@ -3,9 +3,12 @@ from __future__ import annotations
 import argparse
 import logging
 from datetime import date
+import httpx
 
+from app_python_automacao.error_reporter import ErrorReporter, PhaseStatusEntry
 from app_python_automacao.logging_utils import setup_logging
 from app_python_automacao.settings import Settings
+from app_python_automacao.whatsapp_api import WhatsAppApiClient, WhatsAppHsmError
 from app_python_automacao.workflow import CobrancaWorkflow
 
 LOGGER = logging.getLogger(__name__)
@@ -57,6 +60,13 @@ def build_parser() -> argparse.ArgumentParser:
     observacao.add_argument("--protocolo", required=True, help="Protocolo a ser escrito na observacao.")
     observacao.add_argument("--dry-run", action="store_true", help="Nao clica em salvar no Hubsoft Web.")
     observacao.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
+
+    whatsapp = subparsers.add_parser(
+        "whatsapp-hsm",
+        help="Testa apenas o envio do HSM de WhatsApp, sem executar as fases 1 e 2.",
+    )
+    whatsapp.add_argument("--nome-cliente", required=True, help="Nome que sera enviado na variavel do HSM.")
+    whatsapp.add_argument("--telefone", required=True, help="Telefone do cliente para envio do HSM.")
 
     return parser
 
@@ -111,6 +121,56 @@ def main(argv: list[str] | None = None) -> int:
         )
         LOGGER.info("Observacao concluida para cliente %s.", args.cliente_id)
         return 0
+
+    if args.command == "whatsapp-hsm":
+        whatsapp_client = WhatsAppApiClient(settings)
+        error_reporter = ErrorReporter()
+        try:
+            enviado = whatsapp_client.send_phase_three_hsm(
+                nome_cliente=args.nome_cliente,
+                telefone=args.telefone,
+            )
+        except WhatsAppHsmError as exc:
+            error_reporter.append(
+                cancelamento=None,
+                nome_cliente=args.nome_cliente,
+                telefone=args.telefone,
+                status=PhaseStatusEntry(
+                    fase_1="nao_aplicavel",
+                    fase_2="nao_aplicavel",
+                    fase_3="erro",
+                    erro=exc.message,
+                    codigo_erro=exc.cod_error,
+                    detalhe=f"status_http={exc.status_code}",
+                ),
+            )
+            LOGGER.error(
+                "Teste de HSM falhou para %s. cod_error=%s msg=%s",
+                args.nome_cliente,
+                exc.cod_error,
+                exc.message,
+            )
+            return 1
+        except httpx.HTTPError as exc:
+            error_reporter.append(
+                cancelamento=None,
+                nome_cliente=args.nome_cliente,
+                telefone=args.telefone,
+                status=PhaseStatusEntry(
+                    fase_1="nao_aplicavel",
+                    fase_2="nao_aplicavel",
+                    fase_3="erro",
+                    erro="falha http no envio do hsm",
+                    detalhe=str(exc),
+                ),
+            )
+            LOGGER.error("Teste de HSM falhou para %s. detalhe=%s", args.nome_cliente, exc)
+            return 1
+        if enviado:
+            LOGGER.info("Teste de HSM concluido com sucesso para %s.", args.nome_cliente)
+            return 0
+        LOGGER.warning("Teste de HSM nao foi enviado para %s.", args.nome_cliente)
+        return 1
 
     parser.error("Comando invalido.")
     return 2
