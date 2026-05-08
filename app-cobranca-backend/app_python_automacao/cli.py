@@ -54,6 +54,22 @@ def build_parser() -> argparse.ArgumentParser:
     atendimento.add_argument("--skip-phase-two-close", action="store_true", help="Nao fecha o atendimento de cancelamento na fase 2 e registra o relato de encerramento em massa.")
     atendimento.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
 
+    fase_1_1 = subparsers.add_parser(
+        "fase-1-1",
+        help="Executa apenas a fase 1.1 de cobranca/fatura no Hubsoft Web.",
+    )
+    fase_1_1.add_argument("--cliente-id", type=int, required=True, help="ID do cliente no Hubsoft Web.")
+    fase_1_1.add_argument("--codigo-cliente", type=int, default=None, help="Codigo do cliente vindo da API de cancelamentos.")
+    fase_1_1.add_argument("--cliente-servico-id", type=int, required=True, help="ID do cliente_servico para registro operacional.")
+    fase_1_1.add_argument("--nome-cliente", default="MODO TESTE / FASE 1.1", help="Nome do cliente para registro.")
+    fase_1_1.add_argument("--telefone", default=None, help="Telefone do cliente para registro.")
+    fase_1_1.add_argument("--plano", required=True, help="Servico / Plano do cliente para a fase 1.1.")
+    fase_1_1.add_argument("--numero-plano", type=int, default=None, help="Numero do plano/servico do cliente.")
+    fase_1_1.add_argument("--data-venda", required=True, help="Data da venda para calculo da multa. Aceita DD/MM/YYYY ou YYYY-MM-DD.")
+    fase_1_1.add_argument("--data-cancelamento", required=True, help="Data do cancelamento para calculo da multa. Aceita DD/MM/YYYY ou YYYY-MM-DD.")
+    fase_1_1.add_argument("--dry-run", action="store_true", help="Preenche a automacao sem salvar as cobrancas/faturas.")
+    fase_1_1.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
+
     observacao = subparsers.add_parser(
         "observacao",
         help="Adiciona apenas a observacao obrigatoria no cadastro do cliente.",
@@ -124,6 +140,42 @@ def main(argv: list[str] | None = None) -> int:
             headless=not args.headful,
         )
         LOGGER.info("Observacao concluida para cliente %s.", args.cliente_id)
+        return 0
+
+    if args.command == "fase-1-1":
+        error_reporter = ErrorReporter()
+        try:
+            status = workflow.run_phase_one_point_one_only(
+                id_cliente=args.cliente_id,
+                codigo_cliente=args.codigo_cliente,
+                id_cliente_servico=args.cliente_servico_id,
+                nome_cliente=args.nome_cliente,
+                telefone=args.telefone,
+                plano=args.plano,
+                numero_plano=args.numero_plano,
+                data_venda=args.data_venda,
+                data_cancelamento=args.data_cancelamento,
+                dry_run=args.dry_run,
+                headless=not args.headful,
+            )
+        except Exception as exc:
+            error_reporter.append(
+                cancelamento=None,
+                nome_cliente=args.nome_cliente,
+                telefone=args.telefone,
+                status=PhaseStatusEntry(
+                    fase_1="nao_aplicavel",
+                    fase_1_1="erro",
+                    fase_2="nao_aplicavel",
+                    fase_3="nao_aplicavel",
+                    erro="erro na fase 1.1",
+                    detalhe=str(exc),
+                ),
+            )
+            LOGGER.exception("Execucao isolada da fase 1.1 falhou para cliente %s.", args.cliente_id)
+            return 1
+
+        LOGGER.info("Fase 1.1 concluida para cliente %s com status=%s.", args.cliente_id, status)
         return 0
 
     if args.command == "whatsapp-hsm":

@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 import json
 from pathlib import Path
+import unicodedata
 
 from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException, TimeoutException
 from selenium.webdriver.common.by import By
@@ -412,6 +413,7 @@ class HubsoftBillingAutomation:
         self.browser.click(option)
 
     def _select_dialog_service(self, dialog, service_name: str, *, service_number: int | None = None) -> None:
+        target_service_label = service_name.strip()
         service_select = self._wait_dialog_element(
             dialog,
             [
@@ -431,7 +433,7 @@ class HubsoftBillingAutomation:
         self.browser.click(service_select)
         self._log(f"Selecionando servico/plano: {service_name}")
 
-        normalized_name = service_name.upper().replace("MBITS", "MBPS")
+        normalized_name = target_service_label.upper().replace("MBITS", "MBPS")
         normalized_prefix = normalized_name.split(" - ")[0].strip()
         locators = []
         if service_number is not None:
@@ -480,6 +482,24 @@ class HubsoftBillingAutomation:
 
         option = self.browser.wait_for_visible_any(locators)
         self.browser.click(option)
+        self.browser.until(
+            f"Servico/plano ainda nao ficou selecionado como '{target_service_label}'",
+            lambda driver: self._normalize_option_text(
+                self._current_select_label(
+                    dialog,
+                    [
+                        ".//md-select[@name='cliente_servico']",
+                        ".//md-select[contains(@name, 'cliente_servico')]",
+                        ".//md-select[contains(@aria-label, 'Serviço / Plano')]",
+                        ".//md-select[contains(@aria-label, 'Servico / Plano')]",
+                    ],
+                )
+            ).find(self._normalize_option_text(target_service_label)) >= 0,
+        )
+        self._log(
+            "Servico/plano confirmado: "
+            f"{self._current_select_label(dialog, ['.//md-select[@name=\"cliente_servico\"]', './/md-select[contains(@name, \"cliente_servico\")]'])}"
+        )
 
     def _ensure_invoice_billing_method(self, dialog) -> None:
         target_method = self.settings.default_forma_cobranca.strip()
@@ -522,9 +542,30 @@ class HubsoftBillingAutomation:
         self.browser.set_value_via_js(date_input, date_display)
 
     def _set_dialog_input(self, dialog, field_name: str, value: str, *, money: bool = False) -> None:
+        input_locators = [f".//*[@name='{field_name}']"]
+        if field_name == "descricao":
+            input_locators.extend(
+                [
+                    ".//textarea[contains(@name, 'descricao')]",
+                    ".//input[contains(@name, 'descricao')]",
+                    ".//md-input-container[.//label[contains(normalize-space(.), 'Descrição')]]//textarea[1]",
+                    ".//md-input-container[.//label[contains(normalize-space(.), 'Descricao')]]//textarea[1]",
+                    ".//md-input-container[.//label[contains(normalize-space(.), 'Descrição')]]//input[1]",
+                    ".//md-input-container[.//label[contains(normalize-space(.), 'Descricao')]]//input[1]",
+                ]
+            )
+        elif field_name == "valor":
+            input_locators.extend(
+                [
+                    ".//input[contains(@name, 'valor')]",
+                    ".//md-input-container[.//label[contains(normalize-space(.), 'Valor Cobrança')]]//input[1]",
+                    ".//md-input-container[.//label[contains(normalize-space(.), 'Valor Cobranca')]]//input[1]",
+                ]
+            )
+
         input_element = self._wait_dialog_element(
             dialog,
-            [f".//*[@name='{field_name}']"],
+            input_locators,
             f"Campo '{field_name}' do modal ainda nao carregou",
         )
         final_value = value.replace(".", ",") if money else value
@@ -532,6 +573,16 @@ class HubsoftBillingAutomation:
             self.browser.set_value(input_element, final_value)
         except Exception:
             self.browser.set_value_via_js(input_element, final_value)
+        self.browser.set_value_via_js(input_element, final_value)
+        self.browser.until(
+            f"Campo '{field_name}' ainda nao refletiu o valor informado",
+            lambda driver: self._matches_expected_input_value(
+                actual_value=self._read_input_value(dialog, input_locators),
+                expected_value=final_value,
+                money=money,
+            ),
+        )
+        self._log(f"Campo '{field_name}' confirmado com valor: {self._read_input_value(dialog, input_locators)}")
 
     def _find_charge_submit_button(self, dialog):
         return self._wait_dialog_element(
@@ -658,6 +709,9 @@ class HubsoftBillingAutomation:
         }
 
     def _current_billing_method_label(self, dialog, xpaths: list[str]) -> str:
+        return self._current_select_label(dialog, xpaths)
+
+    def _current_select_label(self, dialog, xpaths: list[str]) -> str:
         selected_value_xpaths = [
             ".//*[contains(@class, 'md-text')][normalize-space()]",
             ".//md-select-value//*[normalize-space()]",
@@ -697,6 +751,48 @@ class HubsoftBillingAutomation:
 
         return ""
 
+    def _read_input_value(self, dialog, xpaths: list[str]) -> str:
+        try:
+            input_element = self._wait_dialog_element(
+                dialog,
+                xpaths,
+                "Campo do modal ainda nao carregou para leitura",
+            )
+        except Exception:
+            return ""
+
+        for attr_name in ("value", "aria-valuetext"):
+            try:
+                attr_value = (input_element.get_attribute(attr_name) or "").strip()
+            except StaleElementReferenceException:
+                return ""
+            if attr_value:
+                return attr_value
+        try:
+            return (input_element.text or "").strip()
+        except StaleElementReferenceException:
+            return ""
+
+    @staticmethod
+    def _matches_expected_input_value(*, actual_value: str, expected_value: str, money: bool = False) -> bool:
+        actual = (actual_value or "").strip()
+        expected = (expected_value or "").strip()
+        if not money:
+            return expected in actual
+
+        def normalize_money(value: str) -> str:
+            return (
+                value.replace("R$", "")
+                .replace(" ", "")
+                .replace(".", "")
+                .replace(",", "")
+                .strip()
+            )
+
+        actual_digits = normalize_money(actual)
+        expected_digits = normalize_money(expected)
+        return bool(actual_digits) and actual_digits == expected_digits
+
     def _filter_open_select_options(self, target_method: str) -> None:
         filter_inputs = self.driver.find_elements(
             By.XPATH,
@@ -716,17 +812,18 @@ class HubsoftBillingAutomation:
                     continue
 
     def _wait_visible_open_option(self, target_method: str):
-        exact_option_literal = self._xpath_literal(target_method.upper())
-
         def locate(driver):
             candidates = driver.find_elements(
                 By.XPATH,
-                f"//*[self::md-option or self::div or self::span][translate(normalize-space(.), "
-                f"'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')={exact_option_literal}]",
+                "//*[self::md-option or self::div or self::span][normalize-space(.)!='']",
             )
+            normalized_target = self._normalize_option_text(target_method)
             for candidate in candidates:
                 try:
                     if not candidate.is_displayed():
+                        continue
+                    candidate_text = self._normalize_option_text(candidate.text)
+                    if candidate_text != normalized_target:
                         continue
                     clickable_ancestors = candidate.find_elements(
                         By.XPATH,
@@ -747,6 +844,12 @@ class HubsoftBillingAutomation:
             f"Opcao visivel '{target_method}' nao apareceu no dropdown aberto",
             locate,
         )
+
+    @staticmethod
+    def _normalize_option_text(value: str) -> str:
+        normalized = unicodedata.normalize("NFKD", value or "")
+        without_accents = "".join(char for char in normalized if not unicodedata.combining(char))
+        return " ".join(without_accents.upper().split())
 
     def _reset_after_dry_run(self, id_cliente: int) -> None:
         dialog_buttons = [

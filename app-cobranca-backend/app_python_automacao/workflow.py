@@ -145,6 +145,40 @@ class CobrancaWorkflow:
             base_report=report,
         )
 
+    def run_phase_one_point_one_only(
+        self,
+        *,
+        id_cliente: int,
+        codigo_cliente: int | None,
+        id_cliente_servico: int,
+        nome_cliente: str,
+        telefone: str | None,
+        plano: str | None,
+        numero_plano: int | None,
+        data_venda: str | None,
+        data_cancelamento: str | None,
+        dry_run: bool = False,
+        headless: bool = True,
+    ) -> str:
+        cancelamento = CancelamentoRecord(
+            codigo_cliente=codigo_cliente or self.settings.teste_codigo_cliente,
+            id_cliente=id_cliente,
+            id_cliente_servico=id_cliente_servico,
+            nome_razaosocial=nome_cliente,
+            telefone_primario=telefone,
+            plano=plano,
+            numero_plano=numero_plano,
+            data_venda=data_venda,
+            data_cancelamento=data_cancelamento,
+            motivo_cancelamento=self.settings.motivo_cancelamento_alvo,
+        )
+        return self._process_phase_one_point_one(
+            cancelamento=cancelamento,
+            dry_run=dry_run,
+            skip_browser=False,
+            headless=headless,
+        )
+
     def add_observation_only(
         self,
         id_cliente: int,
