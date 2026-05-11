@@ -22,9 +22,9 @@ class UtilsTestCase(unittest.TestCase):
     def test_normalize_text_removes_accents_and_extra_spaces(self) -> None:
         self.assertEqual(normalize_text("  Cobrança   Automática "), "COBRANCA AUTOMATICA")
 
-    def test_compute_cancelamentos_window_uses_first_day_of_previous_month(self) -> None:
+    def test_compute_cancelamentos_window_uses_today_as_default_start(self) -> None:
         dia_inicio, dia_fim = compute_cancelamentos_window(date(2026, 5, 7))
-        self.assertEqual(dia_inicio, date(2026, 4, 1))
+        self.assertEqual(dia_inicio, date(2026, 5, 7))
         self.assertEqual(dia_fim, date(2026, 5, 7))
 
     def test_filter_cancelamentos_is_accent_insensitive(self) -> None:

@@ -45,12 +45,12 @@ Header: x-api-key
 
 Regras dos parametros:
 
-- `dia_inicio`: sempre o primeiro dia do mes anterior ao mes atual da execucao
+- `dia_inicio`: por padrao, a propria data atual da execucao
 - `dia_fim`: data atual da execucao
 
 Exemplo considerando execucao em `2026-05-07`:
 
-- `dia_inicio = 2026-04-01`
+- `dia_inicio = 2026-05-07`
 - `dia_fim = 2026-05-07`
 
 Campos que devem ser armazenados do retorno:

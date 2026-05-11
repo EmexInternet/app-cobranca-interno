@@ -51,10 +51,7 @@ def normalize_phone_br(value: str | None, country_code: str = "55") -> str | Non
 
 
 def compute_cancelamentos_window(today: date) -> tuple[date, date]:
-    current_month_start = today.replace(day=1)
-    previous_month_end = current_month_start.fromordinal(current_month_start.toordinal() - 1)
-    previous_month_start = previous_month_end.replace(day=1)
-    return previous_month_start, today
+    return today, today
 
 
 def filter_cancelamentos(
