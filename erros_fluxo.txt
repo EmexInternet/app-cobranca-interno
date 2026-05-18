@@ -1,0 +1,83 @@
+2026-05-08T17:16:05 | codigo_cliente=45098 | id_cliente=44847 | id_cliente_servico=85830 | nome_cliente=JOÃO GABRIEL | telefone=(24) 99915-7259 | fase_1=dry_run | fase_1_1=ignorada_skip_browser | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Formato de payload nao suportado para extracao de itens.
+2026-05-08T17:24:09 | codigo_cliente=45098 | id_cliente=44847 | id_cliente_servico=85830 | nome_cliente=JOÃO GABRIEL | telefone=(24) 99915-7259 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: unknown error: Chrome failed to start: exited abnormally.
+  (unknown error: DevToolsActivePort file doesn't exist)
+  (The process started from chrome location /usr/bin/chromium-browser is no longer running, so ChromeDriver is assuming that Chrome has crashed.)
+Stacktrace:
+#0 0x55fc50c99fe3 <unknown>
+#1 0x55fc509d8d36 <unknown>
+#2 0x55fc50a01b20 <unknown>
+#3 0x55fc509fda9b <unknown>
+#4 0x55fc50a3faf7 <unknown>
+#5 0x55fc50a3f11f <unknown>
+#6 0x55fc50a36693 <unknown>
+#7 0x55fc50a0903a <unknown>
+#8 0x55fc50a0a17e <unknown>
+#9 0x55fc50c5bdbd <unknown>
+#10 0x55fc50c5fc6c <unknown>
+#11 0x55fc50c694b0 <unknown>
+#12 0x55fc50c60d63 <unknown>
+#13 0x55fc50c33c35 <unknown>
+#14 0x55fc50c84138 <unknown>
+#15 0x55fc50c842c7 <unknown>
+#16 0x55fc50c92093 <unknown>
+#17 0x7f0875aad6db start_thread
+
+2026-05-08T17:45:20 | codigo_cliente=45098 | id_cliente=44847 | id_cliente_servico=85830 | nome_cliente=JOÃO GABRIEL | telefone=(24) 99915-7259 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: unknown error: Chrome failed to start: exited abnormally.
+  (unknown error: DevToolsActivePort file doesn't exist)
+  (The process started from chrome location /usr/bin/chromium-browser is no longer running, so ChromeDriver is assuming that Chrome has crashed.)
+Stacktrace:
+#0 0x5654f399efe3 <unknown>
+#1 0x5654f36ddd36 <unknown>
+#2 0x5654f3706b20 <unknown>
+#3 0x5654f3702a9b <unknown>
+#4 0x5654f3744af7 <unknown>
+#5 0x5654f374411f <unknown>
+#6 0x5654f373b693 <unknown>
+#7 0x5654f370e03a <unknown>
+#8 0x5654f370f17e <unknown>
+#9 0x5654f3960dbd <unknown>
+#10 0x5654f3964c6c <unknown>
+#11 0x5654f396e4b0 <unknown>
+#12 0x5654f3965d63 <unknown>
+#13 0x5654f3938c35 <unknown>
+#14 0x5654f3989138 <unknown>
+#15 0x5654f39892c7 <unknown>
+#16 0x5654f3997093 <unknown>
+#17 0x7f0648b6f6db start_thread
+
+2026-05-08T17:53:35 | codigo_cliente=45098 | id_cliente=44847 | id_cliente_servico=85830 | nome_cliente=JOÃO GABRIEL | telefone=(24) 99915-7259 | fase_1=sucesso | fase_1_1=sucesso | fase_2=sucesso | fase_3=erro | erro=Contato possui atendimento ativo | codigo_erro=13 | detalhe=status_http=400
+2026-05-11T14:31:00 | codigo_cliente=60201 | id_cliente=60426 | id_cliente_servico=84618 | nome_cliente=MARIA DA GLÓRIA DA SILVA LACERDA  | telefone=24992896087 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: Opcao visivel 'MULTA RESCISORIA' nao apareceu no dropdown aberto: tempo limite de 60s excedido.
+
+2026-05-11T15:00:31 | codigo_cliente=27315 | id_cliente=26925 | id_cliente_servico=27188 | nome_cliente=BRUNA DA CONCEIÇÃO CAPITULINO DE SOUZA | telefone=24998455316 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: Nenhum elemento visivel encontrado para os locators: [('xpath', "//md-option[contains(normalize-space(.), '(0)')]"), ('xpath', "//md-option[contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), '0')]"), ('xpath', "//md-option[contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), '2103 PARATY 30 MB') and contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'HABILITADO')]"), ('xpath', "//md-option[contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), '2103 PARATY 30 MB')]")]: tempo limite de 60s excedido.
+
+2026-05-13T10:01:25 | codigo_cliente=58471 | id_cliente=58477 | id_cliente_servico=81293 | nome_cliente=GREGORY RAFAEL ROSA ALEXANDRE | telefone=24981468381 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: Campo 'Servico / Plano' do modal ainda nao carregou: tempo limite de 60s excedido.
+
+2026-05-18T11:22:27 | codigo_cliente=19375 | id_cliente=18924 | id_cliente_servico=43217 | nome_cliente=WESLEM DANIEL DE FREITAS | telefone=24999054043 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: Servico/plano ainda nao ficou selecionado como '2022 COMBO 50 MB': tempo limite de 60s excedido.
+
+2026-05-18T11:31:03 | codigo_cliente=62179 | id_cliente=62630 | id_cliente_servico=88397 | nome_cliente=ANA PAULA APARECIDA DOS SANTOS | telefone=24992543376 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: Opcao visivel 'MULTA RESCISORIA' nao apareceu no dropdown aberto: tempo limite de 60s excedido.
+
+2026-05-18T11:43:58 | codigo_cliente=61908 | id_cliente=62335 | id_cliente_servico=91724 | nome_cliente=KARLOS EDUARDO MOREIRA XAVIER | telefone=24992911135 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: Nenhum elemento visivel encontrado para os locators: [('xpath', "//md-option[contains(normalize-space(.), '(1)')]"), ('xpath', "//md-option[contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), '1')]"), ('xpath', "//md-option[contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), '2026A1 COMBO 660 MBPS') and contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'HABILITADO')]"), ('xpath', "//md-option[contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), '2026A1 COMBO 660 MBPS')]")]: tempo limite de 60s excedido.
+
+2026-05-18T12:01:21 | codigo_cliente=61072 | id_cliente=61432 | id_cliente_servico=86386 | nome_cliente=CLÁUDIO HENRIQUE PEREIRA SANTOS DA SILVA  | telefone=24992045646 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: Opcao visivel 'BOLETO INTERNO - EMEX' nao apareceu no dropdown aberto: tempo limite de 60s excedido.
+
+2026-05-18T12:34:40 | codigo_cliente=50231 | id_cliente=50059 | id_cliente_servico=67018 | nome_cliente=MARIA DA PENHA DA SILVA | telefone=24988015029 | fase_1=sucesso | fase_1_1=erro | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro na fase 1.1 | detalhe=Message: Nenhum elemento visivel encontrado para os locators: [('xpath', "//md-option[contains(normalize-space(.), '(0)')]"), ('xpath', "//md-option[contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), '0')]"), ('xpath', "//md-option[contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), '2023A1 COMBO 220 MBPS') and contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 'HABILITADO')]"), ('xpath', "//md-option[contains(translate(normalize-space(.), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'), '2023A1 COMBO 220 MBPS')]")]: tempo limite de 60s excedido.
+
+2026-05-18T12:56:54 | codigo_cliente=63096 | id_cliente=63651 | id_cliente_servico=90189 | nome_cliente=SIMONE COUTO DE OLIVEIRA  | telefone=1997187996 | fase_1=sucesso | fase_1_1=sucesso | fase_2=sucesso | fase_3=erro | erro=Contato possui atendimento ativo | codigo_erro=13 | detalhe=status_http=400
+2026-05-18T13:00:15 | codigo_cliente=63158 | id_cliente=63717 | id_cliente_servico=90314 | nome_cliente=BARBARA HELENA MIGUEL FARIA | telefone=24999873003 | fase_1=nao_iniciada | fase_1_1=nao_iniciada | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Server error '502 Bad Gateway' for url 'https://api.emex.hubsoft.com.br/api/v1/integracao/atendimento/1067905'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-05-18T13:00:15 | codigo_cliente=63185 | id_cliente=63747 | id_cliente_servico=90372 | nome_cliente=LUAN DOS SANTOS | telefone=24992946180 | fase_1=nao_iniciada | fase_1_1=nao_iniciada | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Server error '502 Bad Gateway' for url 'https://api.emex.hubsoft.com.br/api/v1/integracao/cliente/atendimento?busca=id_cliente_servico&termo_busca=90372&apenas_pendente=sim'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-05-18T13:00:15 | codigo_cliente=55022 | id_cliente=54930 | id_cliente_servico=90394 | nome_cliente=ADAIZA DOS REIS  | telefone=24992228718 | fase_1=nao_iniciada | fase_1_1=nao_iniciada | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Server error '502 Bad Gateway' for url 'https://api.emex.hubsoft.com.br/api/v1/integracao/cliente/atendimento?busca=id_cliente_servico&termo_busca=90394&apenas_pendente=sim'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-05-18T13:00:15 | codigo_cliente=49390 | id_cliente=49199 | id_cliente_servico=65691 | nome_cliente=GUILHERM PETERSEN MOZA DA SILVA | telefone=24999232733 | fase_1=nao_iniciada | fase_1_1=nao_iniciada | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Server error '502 Bad Gateway' for url 'https://api.emex.hubsoft.com.br/api/v1/integracao/cliente/atendimento?busca=id_cliente_servico&termo_busca=65691&apenas_pendente=sim'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-05-18T13:00:15 | codigo_cliente=22651 | id_cliente=22220 | id_cliente_servico=25069 | nome_cliente=LUCAS SIQUEIRA DA SILVA | telefone=24998397602 | fase_1=nao_iniciada | fase_1_1=nao_iniciada | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Server error '502 Bad Gateway' for url 'https://api.emex.hubsoft.com.br/api/v1/integracao/cliente/atendimento?busca=id_cliente_servico&termo_busca=25069&apenas_pendente=sim'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-05-18T13:00:15 | codigo_cliente=22832 | id_cliente=22401 | id_cliente_servico=45347 | nome_cliente=EDUARDO GARCIA DE SA | telefone=24998135042 | fase_1=nao_iniciada | fase_1_1=nao_iniciada | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Server error '502 Bad Gateway' for url 'https://api.emex.hubsoft.com.br/api/v1/integracao/cliente/atendimento?busca=id_cliente_servico&termo_busca=45347&apenas_pendente=sim'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-05-18T13:00:15 | codigo_cliente=39257 | id_cliente=38940 | id_cliente_servico=48881 | nome_cliente=DIEGO AMORIM MONTEIRO | telefone=24999887440 | fase_1=nao_iniciada | fase_1_1=nao_iniciada | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Server error '502 Bad Gateway' for url 'https://api.emex.hubsoft.com.br/api/v1/integracao/cliente/atendimento?busca=id_cliente_servico&termo_busca=48881&apenas_pendente=sim'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-05-18T13:00:15 | codigo_cliente=44526 | id_cliente=44268 | id_cliente_servico=57758 | nome_cliente=MARCIO DE CARVALHO OLIVEIRA  | telefone=24998796995 | fase_1=nao_iniciada | fase_1_1=nao_iniciada | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Server error '502 Bad Gateway' for url 'https://api.emex.hubsoft.com.br/api/v1/integracao/cliente/atendimento?busca=id_cliente_servico&termo_busca=57758&apenas_pendente=sim'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502
+2026-05-18T13:00:15 | codigo_cliente=55733 | id_cliente=55655 | id_cliente_servico=76584 | nome_cliente=JOELMA SANTOS GRIMALDI | telefone=21983852480 | fase_1=nao_iniciada | fase_1_1=nao_iniciada | fase_2=nao_iniciada | fase_3=nao_iniciada | erro=erro inesperado no fluxo do cliente | detalhe=Server error '502 Bad Gateway' for url 'https://api.emex.hubsoft.com.br/api/v1/integracao/cliente/atendimento?busca=id_cliente_servico&termo_busca=76584&apenas_pendente=sim'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/502

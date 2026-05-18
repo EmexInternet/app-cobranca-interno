@@ -215,6 +215,7 @@ class CobrancaWorkflow:
                 fase_1_1_status = "nao_iniciada"
                 fase_2_status = "nao_iniciada"
                 fase_3_status = "nao_iniciada"
+                erro_inesperado = False
                 try:
                     LOGGER.info(
                         "Processando cliente %s / cliente_servico %s.",
@@ -319,6 +320,7 @@ class CobrancaWorkflow:
                         base_report=base_report,
                     )
                 except Exception as exc:
+                    erro_inesperado = True
                     self.error_reporter.append(
                         cancelamento=cancelamento,
                         status=PhaseStatusEntry(
@@ -336,7 +338,13 @@ class CobrancaWorkflow:
                         cancelamento.id_cliente_servico,
                     )
                 finally:
-                    if not dry_run:
+                    if not dry_run and self._should_mark_processed(
+                        fase_1=fase_1_status,
+                        fase_1_1=fase_1_1_status,
+                        fase_2=fase_2_status,
+                        fase_3=fase_3_status,
+                        erro_inesperado=erro_inesperado,
+                    ):
                         self.processing_state.mark_processed(
                             cancelamento,
                             fase_1=fase_1_status,
@@ -344,8 +352,34 @@ class CobrancaWorkflow:
                             fase_2=fase_2_status,
                             fase_3=fase_3_status,
                         )
+                    elif not dry_run:
+                        LOGGER.warning(
+                            "Cliente %s / cliente_servico %s nao sera marcado como processado "
+                            "devido a erro no fluxo e voltara a ser elegivel na proxima rodada. "
+                            "fase_1=%s fase_1_1=%s fase_2=%s fase_3=%s erro_inesperado=%s",
+                            cancelamento.id_cliente,
+                            cancelamento.id_cliente_servico,
+                            fase_1_status,
+                            fase_1_1_status,
+                            fase_2_status,
+                            fase_3_status,
+                            erro_inesperado,
+                        )
 
         return base_report
+
+    @staticmethod
+    def _should_mark_processed(
+        *,
+        fase_1: str,
+        fase_1_1: str,
+        fase_2: str,
+        fase_3: str,
+        erro_inesperado: bool,
+    ) -> bool:
+        if erro_inesperado:
+            return False
+        return "erro" not in {fase_1, fase_1_1, fase_2, fase_3}
 
     def _process_cancelamento_phase_two(
         self,
