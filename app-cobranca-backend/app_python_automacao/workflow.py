@@ -61,6 +61,7 @@ class CobrancaWorkflow:
         dia_fim: date | None = None,
         skip_browser: bool = False,
         skip_phase_two_close: bool = False,
+        skip_phase_two_mass_report: bool = False,
         headless: bool = True,
     ) -> WorkflowReport:
         if dia_inicio is None or dia_fim is None:
@@ -100,6 +101,7 @@ class CobrancaWorkflow:
             dry_run=dry_run,
             skip_browser=skip_browser,
             skip_phase_two_close=skip_phase_two_close,
+            skip_phase_two_mass_report=skip_phase_two_mass_report,
             headless=headless,
             base_report=report,
         )
@@ -121,6 +123,7 @@ class CobrancaWorkflow:
         dry_run: bool = False,
         skip_browser: bool = False,
         skip_phase_two_close: bool = False,
+        skip_phase_two_mass_report: bool = False,
         headless: bool = True,
     ) -> WorkflowReport:
         cancelamento = CancelamentoRecord(
@@ -141,6 +144,7 @@ class CobrancaWorkflow:
             dry_run=dry_run,
             skip_browser=skip_browser,
             skip_phase_two_close=skip_phase_two_close,
+            skip_phase_two_mass_report=skip_phase_two_mass_report,
             headless=headless,
             base_report=report,
         )
@@ -195,6 +199,7 @@ class CobrancaWorkflow:
         dry_run: bool,
         skip_browser: bool,
         skip_phase_two_close: bool,
+        skip_phase_two_mass_report: bool,
         headless: bool,
         base_report: WorkflowReport,
     ) -> WorkflowReport:
@@ -310,6 +315,7 @@ class CobrancaWorkflow:
                         atendimentos=atendimentos_cancelamento,
                         dry_run=dry_run,
                         skip_phase_two_close=skip_phase_two_close,
+                        skip_phase_two_mass_report=skip_phase_two_mass_report,
                         base_report=base_report,
                     )
                 except Exception as exc:
@@ -347,6 +353,7 @@ class CobrancaWorkflow:
         atendimentos: list[HubsoftAtendimento] | None,
         dry_run: bool,
         skip_phase_two_close: bool,
+        skip_phase_two_mass_report: bool,
         base_report: WorkflowReport,
     ) -> tuple[str, str]:
         atendimentos = atendimentos or []
@@ -386,7 +393,13 @@ class CobrancaWorkflow:
                 "Dry-run fase 2: atendimento %s seria relatado%s. "
                 "faturas_consideradas=%s valor_multa=R$ %s total_divida=R$ %s",
                 atendimento.id_atendimento,
-                " e fechado" if not skip_phase_two_close else " e ficaria pendente para encerramento em massa",
+                (
+                    " e fechado"
+                    if not skip_phase_two_close
+                    else " e ficaria pendente sem relato de massa"
+                    if skip_phase_two_mass_report
+                    else " e ficaria pendente para encerramento em massa"
+                ),
                 resumo.quantidade_faturas_consideradas,
                 format_decimal_brl(resumo.valor_multa),
                 format_decimal_brl(resumo.total_divida),
@@ -395,11 +408,17 @@ class CobrancaWorkflow:
 
         self.hubsoft_client.add_message(atendimento.id_atendimento, mensagem)
         if skip_phase_two_close:
-            LOGGER.info(
-                "Encerramento da fase 2 foi pulado para o atendimento %s. Relato de massa sera registrado.",
-                atendimento.id_atendimento,
-            )
-            self.hubsoft_client.add_message(atendimento.id_atendimento, RELATO_FASE_2_ENCERRAMENTO_EM_MASSA)
+            if skip_phase_two_mass_report:
+                LOGGER.info(
+                    "Encerramento da fase 2 foi pulado para o atendimento %s sem registrar relato de massa.",
+                    atendimento.id_atendimento,
+                )
+            else:
+                LOGGER.info(
+                    "Encerramento da fase 2 foi pulado para o atendimento %s. Relato de massa sera registrado.",
+                    atendimento.id_atendimento,
+                )
+                self.hubsoft_client.add_message(atendimento.id_atendimento, RELATO_FASE_2_ENCERRAMENTO_EM_MASSA)
         else:
             try:
                 self.hubsoft_client.close_atendimento(atendimento.id_atendimento)

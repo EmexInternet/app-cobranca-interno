@@ -29,6 +29,11 @@ def build_parser() -> argparse.ArgumentParser:
     executar.add_argument("--dia-fim", type=_parse_iso_date, default=None, help="Sobrescreve o dia_fim da API de cancelamentos no formato YYYY-MM-DD.")
     executar.add_argument("--skip-browser", action="store_true", help="Executa somente a parte de API, sem abrir o Chrome.")
     executar.add_argument("--skip-phase-two-close", action="store_true", help="Nao fecha o atendimento de cancelamento na fase 2 e registra o relato de encerramento em massa.")
+    executar.add_argument(
+        "--skip-phase-two-mass-report",
+        action="store_true",
+        help="Quando usado com --skip-phase-two-close, nao registra o relato de encerramento em massa.",
+    )
     executar.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
 
     atendimento = subparsers.add_parser(
@@ -52,6 +57,11 @@ def build_parser() -> argparse.ArgumentParser:
     atendimento.add_argument("--dry-run", action="store_true", help="Nao grava alteracoes via API nem no Hubsoft Web.")
     atendimento.add_argument("--skip-browser", action="store_true", help="Executa somente a consulta da API, sem abrir o Chrome.")
     atendimento.add_argument("--skip-phase-two-close", action="store_true", help="Nao fecha o atendimento de cancelamento na fase 2 e registra o relato de encerramento em massa.")
+    atendimento.add_argument(
+        "--skip-phase-two-mass-report",
+        action="store_true",
+        help="Quando usado com --skip-phase-two-close, nao registra o relato de encerramento em massa.",
+    )
     atendimento.add_argument("--headful", action="store_true", help="Abre o Chrome com interface visual.")
 
     fase_1_1 = subparsers.add_parser(
@@ -108,6 +118,7 @@ def main(argv: list[str] | None = None) -> int:
             dia_fim=args.dia_fim,
             skip_browser=args.skip_browser,
             skip_phase_two_close=args.skip_phase_two_close,
+            skip_phase_two_mass_report=args.skip_phase_two_mass_report,
             headless=not args.headful,
         )
         LOGGER.info("Execucao finalizada. %s", report.to_log_message())
@@ -127,6 +138,7 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
             skip_browser=args.skip_browser,
             skip_phase_two_close=args.skip_phase_two_close,
+            skip_phase_two_mass_report=args.skip_phase_two_mass_report,
             headless=not args.headful,
         )
         LOGGER.info("Execucao finalizada. %s", report.to_log_message())
