@@ -17,6 +17,17 @@ class WorkflowRetryPolicyTestCase(unittest.TestCase):
             )
         )
 
+    def test_cliente_com_erro_502_volta_para_proxima_rodada(self) -> None:
+        self.assertFalse(
+            CobrancaWorkflow._should_mark_processed(
+                fase_1="nao_iniciada",
+                fase_1_1="nao_iniciada",
+                fase_2="nao_iniciada",
+                fase_3="nao_iniciada",
+                erro_inesperado=True,
+            )
+        )
+
     def test_cliente_com_erro_em_qualquer_fase_nao_deve_ser_marcado_como_processado(self) -> None:
         self.assertFalse(
             CobrancaWorkflow._should_mark_processed(

@@ -377,6 +377,7 @@ class CobrancaWorkflow:
         fase_3: str,
         erro_inesperado: bool,
     ) -> bool:
+        """Evita que falhas entrem na persistencia e bloqueiem a proxima rodada."""
         if erro_inesperado:
             return False
         return "erro" not in {fase_1, fase_1_1, fase_2, fase_3}
